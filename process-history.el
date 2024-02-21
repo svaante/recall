@@ -415,7 +415,10 @@ for pruning options."
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
   (interactive (list (tabulated-list-get-id)) process-history-list-mode)
-  (kill-process (--item-process history-item)))
+  (let ((process (--item-process history-item)))
+    (unless process
+      (user-error "Current history item does not have an live process."))
+    (kill-process process)))
 
 (defun process-history-copy-as-kill-command (history-item)
   "Copy command of HISTORY-ITEM."
