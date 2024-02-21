@@ -32,6 +32,7 @@
 (require 'cl-macs)
 (require 'tramp)
 
+
 ;;; Custom
 (defgroup process-history nil
   "Extensive history for processes."
@@ -100,6 +101,7 @@ See `time-stamp-format'."
 Alist of (FUNCTION . LENGTH FACE) pairs."
   :type 'alist)
 
+
 ;;; Faces
 (defface process-history-directory-face
   '((t :inherit dired-directory))
@@ -113,14 +115,17 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
   '((t :inherit error))
   "Face used to annotate process error status.")
 
+
 ;;; Global vars
 (defvar process-history nil
   "History list of `process-history--item' items.")
 
+
 ;;; Data
 (cl-defstruct (process-history--item (:type list))
   command start-time end-time exit-code directory vc condition process)
 
+
 ;;; Utils
 (defun process-history--command-to-string (command)
   (string-join (if (equal (nth 1 command) shell-command-switch)
@@ -149,6 +154,7 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
                                unique-command-p))
                  collect item)))
 
+
 ;;; Latch on `make-process'
 (defun process-history--make-process (make-process &rest args)
   (let ((command
@@ -217,8 +223,8 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
                 (process-history--item-exit-code item)
                 (process-exit-status proc)))))))
 
-;;; Annotation functions
-
+
+;;; Annotation
 (defun process-history--annotate-directory (item)
   (propertize
    (let ((directory (process-history--item-directory item)))
@@ -250,6 +256,15 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
   (propertize (format "%s" (process-history--item-condition item))
               'face 'process-history-mode-face))
 
+(defun process-history--annotate (item)
+  (mapconcat (pcase-lambda (`(,fn ,length))
+               (propertize (truncate-string-to-width
+                            (format "%s" (or (funcall fn item) ""))
+                            length 0 ?\s "...")))
+             process-history-annotate-alist
+             " "))
+
+
 ;;; Completion
 (defun process-history--collection ()
   (cl-loop with command-count = (make-hash-table :test 'equal)
@@ -262,14 +277,6 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
                                    (propertize (format "<%d>" count)
                                                'face 'shadow)))
                          item)))
-
-(defun process-history--annotate (item)
-  (mapconcat (pcase-lambda (`(,fn ,length))
-               (propertize (truncate-string-to-width
-                            (format "%s" (or (funcall fn item) ""))
-                            length 0 ?\s "...")))
-             process-history-annotate-alist
-             " "))
 
 (defun process-history--completing-read (prompt &optional predicate)
   (let* ((max-candidate-width 80)
@@ -303,6 +310,7 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
     (alist-get (completing-read prompt collection predicate t) alist
                nil nil 'equal)))
 
+
 ;;; Commands
 (defun process-history-save ()
   "Prune and save `process-history'.
@@ -380,9 +388,8 @@ for pruning options."
    (list (process-history--completing-read
           "Kill process: "
           (lambda (item)
-            (and-let* ((process (process-history--item-process item))
-                       ((processp process)))
-              (process-live-p process))))))
+            (when-let ((process (process-history--item-process item)))
+              (and (processp process) (process-live-p process)))))))
   (kill-process (process-history--item-process history-item)))
 
 (defun process-history-copy-as-kill-command (history-item)
@@ -427,6 +434,4 @@ for pruning options."
     (remove-hook 'kill-emacs-hook 'process-history-save))))
 
 (provide 'process-history)
-
 ;;; process-history.el ends here
-
