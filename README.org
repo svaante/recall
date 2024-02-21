@@ -1,0 +1,40 @@
+#+title: Process History - Extensive history for processes
+#+author: Daniel Pettersson
+#+language: en
+
+This package advices =make-process= and friends to store command,
+working directory, stdout, start time, end time, exit code and vc
+revision for all of emacs's sub-processes.
+
+Think =.bash_history= plus plus.
+
+Enable process surveillance with =process-history-mode=.
+
+* Configuration
+#+begin_src emacs-lisp
+  (use-package process-history
+    :straight (process-history :type git :host github :repo "svaante/process-history"))
+    :bind
+    ;; Note: This binding overrides default binding for `find-file-read-only'
+    ("C-x C-r" . process-history-list)
+    :config
+    ;; Where to place logs
+    ;; (setq process-history-directory "/some/log/dir")
+
+    ;; Which buffers to enable process history for (comes with sensible defaults)
+    ;; (add-to-list 'process-history-buffer-match "\\*dape-shell\\*")
+
+    ;; Which buffers to enable process history for (comes with sensible defaults)
+    ;; (add-to-list 'process-history-this-command 'shell-command)
+
+    ;; Enable `make-process' advice
+    (process-history-mode))
+#+end_src
+
+* Note
+As this package advices core functionality, usage might have
+unintended consequences.  Disable =process-history-mode= at the
+first signs of process spawning troubles.
+
+Package takes some inspiration from the excellent package
+=detached.el=.
