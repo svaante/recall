@@ -27,10 +27,11 @@
 
 ;;; Commentary:
 
+;; Think .bash_history, but everything you ever wanted.
+
 ;; This package advices `make-process' and friends to store command,
 ;; working directory, stdout, start time, end time, exit code and vc
 ;; revision for emacs sub-processes.
-;; Think .bash_history, but everything you ever wanted.
 
 ;; Enable process surveillance with `process-history-mode'.
 
