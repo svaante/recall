@@ -289,8 +289,8 @@ Alist of (FUNCTION . LENGTH FACE) pairs."
                 (category . process-history)
                 (annotation-function
                  . ,(lambda (string)
-                      (setq max-candidate-width
-                            (max max-candidate-width (length string)))
+                      ;; (setq max-candidate-width
+                      ;;       (max max-candidate-width (length string)))
                       (concat
                        (propertize " " 'display
                                    `(space :align-to
