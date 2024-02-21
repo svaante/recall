@@ -193,6 +193,8 @@ Alist of (NAME . ACCESSOR-FN)."
                  else
                  do (delete-file (--log-file item)))))
 
+(defvar-local --log-item nil)
+
 
 ;;; Latch on `make-process'
 (defun --make-process (make-process &rest args)
@@ -442,8 +444,6 @@ for pruning options."
      (display-buffer buffer
                      '((display-buffer-at-bottom)
                        (dedicated . t))))))
-
-(defvar-local --log-item nil)
 
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
