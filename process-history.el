@@ -7,7 +7,7 @@
 ;; Created: 2023
 ;; License: GPL-3.0-or-later
 ;; Version: 0.0.1
-;; Homepage: https://github.com/svaante/dape
+;; Homepage: https://github.com/svaante/process-history
 ;; Package-Requires: ((emacs "29.1"))
 
 ;; This file is not part of GNU Emacs.
