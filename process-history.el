@@ -27,11 +27,10 @@
 
 ;;; Commentary:
 
-;; Think .bash_history, but everything you ever wanted.
-
 ;; This package advices `make-process' and friends to store command,
 ;; working directory, stdout, start time, end time, exit code and vc
 ;; revision for emacs sub-processes.
+;; Think .bash_history, but everything you ever wanted.
 
 ;; Enable process surveillance with `process-history-mode'.
 
@@ -127,10 +126,10 @@ Alist of (NAME . ACCESSOR-FN)."
   :type 'alist)
 
 (defcustom process-history-annotate-alist
-  `((--annotate-directory 40)
+  `((--item-directory 40 process-history-directory-face)
     (--annotate-active-time 20)
     (,(apply-partially '--time-format-slot 'start-time) 20)
-    (--item-vc 40 'shadow))
+    (--item-vc 40 shadow))
   "Annotation formating specification.
 Alist of (ACCESSOR-FN LENGTH FACE)."
   :type 'alist)
@@ -221,7 +220,7 @@ Alist of (ACCESSOR-FN LENGTH FACE)."
              (make-process-history--item
               :command command
               :start-time (current-time)
-              :directory directory
+              :directory (abbreviate-file-name directory)
               :condition condition
               ;; FIXME Should be possible to support other vc backends
               ;; TODO Would be nice if we could store dirty, clean etc.
@@ -271,14 +270,6 @@ Alist of (ACCESSOR-FN LENGTH FACE)."
 
 
 ;;; Annotation
-(defun --annotate-directory (item)
-  (propertize
-   (let ((directory (--item-directory item)))
-     (if (tramp-tramp-file-p directory)
-         directory
-       (abbreviate-file-name directory)))
-   'face 'process-history-directory-face))
-
 (defun --annotate-active-time (item)
   (propertize
    (format-seconds process-history-seconds-format
