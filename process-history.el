@@ -30,20 +30,23 @@
 ;; This package advices `make-process' and friends to store command,
 ;; working directory, stdout, start time, end time, exit code and vc
 ;; revision for emacs sub-processes.
-;; Think .bash_history, but everything you ever wanted.
+;; Think .bash_history++.
 
 ;; Enable process surveillance with `process-history-mode'.
 
 ;; Note:
 ;; As this package advices core functionality, usage might have
 ;; unintended consequences.  Disable `process-history-mode' at the
-;; first signs of troubles with spawning process.
+;; first signs of process spawning troubles.
+
+;; Package takes some inspiration from the excellent package
+;; detached.el
 
 ;;; Code:
 
 (require 'cl-macs)
 (require 'tramp)
-(require 'project)
+(require 'tabulated-list)
 
 
 ;;; Custom
@@ -64,7 +67,7 @@
 (defcustom process-history-buffer-match
   '((major-mode . compilation-mode)
     (major-mode . eshell-mode))
-  "Which buffers to enable process history for.
+  "Add history for additional process buffers.
 See `buffer-match-p'.
 This option works in union with `process-history-this-command'."
   :type '(repeat (choice :tag "Condition"
@@ -79,11 +82,6 @@ This option works in union with `process-history-this-command'."
   "Which commands to enable process history for.
 This option works in union with `process-history-buffer-match'."
   :type '(repeat function))
-
-(defcustom process-history-project-fn (lambda ()
-                                        (project-root (project-current)))
-  "Function which returns project root directory."
-  :type 'function)
 
 (defcustom process-history-prune-after (* 60 24 7 3)
   "Prune history after seconds on `process-history-save'."
@@ -124,29 +122,27 @@ See `time-stamp-format'."
   "Log header specification.
 Alist of (NAME . ACCESSOR-FN)."
   :type 'alist)
-
-(defcustom process-history-annotate-alist
-  `((--item-directory 40 process-history-directory-face)
-    (--annotate-active-time 20)
-    (,(apply-partially '--time-format-slot 'start-time) 20)
-    (--item-vc 40 shadow))
-  "Annotation formating specification.
-Alist of (ACCESSOR-FN LENGTH FACE)."
-  :type 'alist)
-
 
 ;;; Faces
 (defface process-history-directory-face
   '((t :inherit dired-directory))
-  "Face used to annotate directory.")
+  "Face used in Directory column.")
 
 (defface process-history-success-face
   '((t :inherit success))
-  "Face used to annotate process success status.")
+  "Face used in Code column for success status.")
 
 (defface process-history-error-face
   '((t :inherit error))
-  "Face used to annotate process error status.")
+  "Face used in Code column for error status.")
+
+(defface process-history-vc-face
+  '((t :inherit shadow))
+  "Face used in VC column.")
+
+(defface process-history-condition-face
+  '((t :inherit italic))
+  "Face used in Condition column.")
 
 (defface process-history-log-overlay-face
   '((t :inherit font-lock-comment-face :extend t))
@@ -224,7 +220,7 @@ Alist of (ACCESSOR-FN LENGTH FACE)."
               :condition condition
               ;; FIXME Should be possible to support other vc backends
               ;; TODO Would be nice if we could store dirty, clean etc.
-              :vc (or (vc-working-revision (file-name-as-directory directory) 'Git) ""))))
+              :vc (vc-working-revision (file-name-as-directory directory) 'Git))))
         (plist-put args :filter
                    (--make-filter item (plist-get args :filter)))
         (plist-put args :sentinel
@@ -269,88 +265,76 @@ Alist of (ACCESSOR-FN LENGTH FACE)."
                 (process-exit-status proc)))))))
 
 
-;;; Annotation
-(defun --annotate-active-time (item)
-  (propertize
-   (format-seconds process-history-seconds-format
-                   (- (time-to-seconds
-                       (--item-end-time item))
-                      (time-to-seconds (--item-start-time item))))
-   'face
-   (cond
-    ((and-let* ((process (--item-process item)))
-       (process-live-p process))
-     'default)
-    ((equal (--item-exit-code item) 0)
-     'process-history-success-face)
-    (t 'process-history-error-face))))
+;;; List
+(defun process-history--list-refresh ()
+  ;; TODO Should be able to filter by column value
+  (setq tabulated-list-entries
+        (cl-loop
+         for item in process-history
+         collect
+         (list item
+               `[;; Command
+                 ,(--item-command item)
+                 ;; Directory
+                 ,(propertize (--item-directory item)
+                              'face 'process-history-directory-face)
+                 ;; Start
+                 ,(--time-format-slot 'start-time item)
+                 ;; Code
+                 ,(if-let ((code (--item-exit-code item)))
+                      (propertize (format "%s" code)
+                                  'face
+                                  (cond
+                                   ((and-let* ((process (--item-process item)))
+                                      (process-live-p process))
+                                    'default)
+                                   ((equal (--item-exit-code item) 0)
+                                    'process-history-success-face)
+                                   (t 'process-history-error-face)))
+                    "*")
+                 ;; Time
+                 ,(format-seconds process-history-seconds-format
+                                   (- (time-to-seconds
+                                       (--item-end-time item))
+                                      (time-to-seconds (--item-start-time item))))
+                 ;; VC
+                 ,(propertize (or (--item-vc item) "")
+                              'face 'process-history-vc-face)
+                 ;; Condition
+                 ,(propertize (format "%S" (--item-condition item))
+                              'face 'process-history-condition-face)]))))
 
-(defun --annotate-start-time (item)
-  (format-time-string process-history-timestmap-format
-                      (--item-start-time item)))
+(defvar-keymap process-history-list-mode-map
+  :doc "Local keymap for `process-history-list-mode' buffers."
+  :parent tabulated-list-mode-map
+  "C-m"           #'process-history-find-log
+  "C-c C-k"       #'process-history-process-kill
+  "o"             #'process-history-display-buffer
+  "x"             #'process-history-copy-as-kill-command
+  "c"             #'process-history-rerun-with-compile
+  "&"             #'process-history-rerun-with-async-shell-command
+  "d"             #'process-history-delete-item
+  "<mouse-2>"     #'process-history-find-log
+  "<follow-link>" 'mouse-face)
 
-
-;;; Completion
-(defun --collection ()
-  (nreverse
-   (cl-loop with command-count = (make-hash-table :test 'equal)
-            for item in (reverse process-history)
-            for command = (--item-command item)
-            for count = (or (gethash command command-count) 0)
-            do (puthash command (1+ count) command-count)
-            collect (cons (concat command
-                                  (unless (zerop count)
-                                    (propertize (format "<%d>" count)
-                                                'face 'shadow)))
-                          item))))
+(define-derived-mode process-history-list-mode tabulated-list-mode "Process History"
+  "List Process History."
+  :interactive nil
+  (setq-local buffer-stale-function
+              (lambda (&optional _noconfirm) 'fast))
+  (setq tabulated-list-use-header-line t
+        tabulated-list-format
+        (vector '("Command" 80 t)
+		'("Directory" 45 t)
+                '("Start" 19 t)
+                '("Code" 4 t :right-align t)
+                '("Time" 8 t)
+                '("VC" 8 t)
+                '("Condition" 0 t)))
+  (tabulated-list-init-header)
+  (add-hook 'tabulated-list-revert-hook 'process-history--list-refresh nil t))
 
-(defun process-history-completing-read (prompt &optional predicate)
-  "Read a string in the minibuffer, with completion.
-PROMPT is a string to prompt with; normally it ends in a colon and a
-space.
-PREDICATE is an optional function taking command string and
-`process-history--item'.
-Completes from collection based on `process-history'."
-  (let* ((max-candidate-width 80)
-         (alist (--collection))
-         (collection
-          (lambda (string predicate action)
-            (cond
-             ((eq action 'metadata)
-              `(metadata
-                (category . process-history)
-                (annotation-function
-                 . ,(lambda (string)
-                      (setq max-candidate-width
-                            (max (length string) max-candidate-width))
-                      (concat
-                       (propertize " " 'display
-                                   `(space :align-to
-                                           (+ left ,max-candidate-width)))
-                       " "
-                       (let ((item (alist-get string alist
-                                              nil nil 'equal)))
-                         (mapconcat
-                          (pcase-lambda (`(,fn ,length ,face))
-                            (apply 'propertize
-                                   (truncate-string-to-width
-                                    (format "%s" (or (funcall fn item) ""))
-                                    length 0 ?\s "...")
-                                   (when face
-                                     (list 'face face))))
-                          process-history-annotate-alist
-                          " ")))))
-                (display-sort-function . identity)))
-             (t
-              (complete-with-action action
-                                    alist
-                                    string
-                                    predicate)))))
-         ;; Properties are added in `--collection'
-         ;; Therefore we need to get back test properties to equality
-         (minibuffer-allow-text-properties t))
-    (alist-get (completing-read prompt collection predicate t) alist
-               nil nil 'equal)))
+(add-hook 'process-history-list-mode-hook 'auto-revert-mode)
 
 
 ;;; Commands
@@ -392,78 +376,74 @@ for pruning options."
       (write-region (point-min) (point-max) process-history-save-file nil
 		    (unless (called-interactively-p 'interactive) 'quiet)))))
 
-(defun process-history-find-dwim (history-item)
-  "View buffer or log file for HISTORY-ITEM."
-  (interactive (list (process-history-completing-read "Find process buffer or log: ")))
-  (if-let* ((process (--item-process history-item))
-            ((processp process))
-            ((process-live-p process))
-            (buffer (process-buffer process))
-            ((buffer-live-p buffer))
-            (buffer-process (or (get-buffer-process buffer)
-                                process))
-            ((eq process buffer-process)))
-      (pop-to-buffer buffer)
-    (process-history-find-log history-item)))
+(defcustom process-history-on-rerun-hooks '(quit-window)
+  "Close *Process History* buffer on rerun commands."
+  :type 'hook)
 
 (defun process-history-find-log (history-item)
   "View log file for HISTORY-ITEM."
-  (interactive (list (process-history-completing-read "Find process log: ")))
-  (find-file (--log-file history-item))
-  (process-history-log-mode))
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (if-let ((buffer
+            (cl-find-if (lambda (buffer)
+                          (eq history-item (with-current-buffer buffer --log-item)))
+                        (buffer-list))))
+      (pop-to-buffer buffer)
+    (find-file (--log-file history-item))
+    (process-history-log-mode)))
 
-(defun process-history-find-project-log (history-item)
-  "View log file for HISTORY-ITEM in current project."
-  (interactive
-   (list
-    (process-history-completing-read
-     "Find process log in project: "
-     (let ((root (funcall process-history-project-fn)))
-       (pcase-lambda (`(_ . ,item))
-         (string-prefix-p root
-                          (--item-directory item)))))))
-  (process-history-find-log history-item))
-
-(defun process-history-find-log-by-vc (history-item)
-  "View log for HISTORY-ITEM by vc revision."
-  (interactive
-   (list
-    (let ((revision
-           (completing-read "Revision: " (mapcar '--item-vc process-history)
-                            nil t (thing-at-point 'word))))
-      (process-history-completing-read
-       "Find process log: " (pcase-lambda (`(_ . ,item))
-                              (string-prefix-p revision (--item-vc item)))))))
-  (process-history-find-log history-item))
+(defun process-history-display-buffer (history-item)
+  "View buffer for HISTORY-ITEM."
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (display-buffer (process-buffer (--item-process history-item))))
 
 (defun process-history-rerun-with-compile (history-item)
   "Rerun HISTORY-ITEM with `compile'."
-  (interactive (list (process-history-completing-read "Rerun process with compile: ")))
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (run-hooks 'process-history-on-rerun-hooks)
   (let ((default-directory (--item-directory history-item)))
     (compile (--item-command history-item))))
 
 (defun process-history-rerun-with-async-shell-command (history-item)
   "Rerun HISTORY-ITEM with `async-shell-command'."
-  (interactive (list (process-history-completing-read
-                      "Rerun with async-shell-command: ")))
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (run-hooks 'process-history-on-rerun-hooks)
   (let ((default-directory (--item-directory history-item)))
     (async-shell-command (--item-command history-item))))
 
-(defun process-history-kill (history-item)
-  "Kill active HISTORY-ITEM."
-  (interactive
-   (list (process-history-completing-read
-          "Kill process: "
-          (pcase-lambda (`(_ . ,item))
-            (when-let ((process (--item-process item)))
-              (and (processp process) (process-live-p process)))))))
+(defun process-history-process-kill (history-item)
+  "Kill HISTORY-ITEMs process."
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
   (kill-process (--item-process history-item)))
 
 (defun process-history-copy-as-kill-command (history-item)
   "Copy command of HISTORY-ITEM."
-  (interactive
-   (list (process-history-completing-read "Copy process command: ")))
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
   (kill-new (--item-command history-item)))
+
+(defun process-history-delete-item (history-item)
+  "Delete HISTORY-ITEM."
+  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (when (or (not (called-interactively-p 'all))
+            (yes-or-no-p "Are you sure you want to delete history item?"))
+    (delete-file (--log-file history-item))
+    (setq process-history (delq history-item process-history))
+    (revert-buffer)))
+
+;;;###autoload
+(defun process-history-list ()
+  (interactive)
+  (let ((buffer (get-buffer-create "*Process History*")))
+    (with-current-buffer buffer
+      (process-history-list-mode)
+      (auto-revert-mode)
+      (revert-buffer)
+      (goto-char (point-min)))
+    (select-window
+     (display-buffer buffer
+                     '((display-buffer-at-bottom)
+                       (dedicated . t))))))
+
+(defvar-local --log-item nil)
 
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
@@ -501,9 +481,12 @@ for pruning options."
                            (--item-command item)
                            (--time-format-slot 'start-time item))
                    t)
+    (setq --log-item item
+          buffer-read-only t
+          buffer-file-name nil
+          default-directory (--item-directory item))))
 
-    (setq buffer-read-only t
-          buffer-file-name nil)))
+(add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
 
 ;;;###autoload
 (define-minor-mode process-history-mode
