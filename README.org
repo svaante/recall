@@ -39,6 +39,15 @@ Enable process surveillance with =process-history-mode=.
     ;;   "w" #'process-history-copy-as-kill-command
     ;;   "b" #'process-history-display-buffer
     ;;   "d" #'process-history-delete-item)
+    ;; (add-to-list 'embark-keymap-alist
+    ;;              '(process-history . embark-process-history-actions-map))
+    ;; (defun process-history-export (candidates)
+    ;;   (let ((alist (process-history--collection)))
+    ;;     (process-history-list (mapcar (lambda (cand)
+    ;;                                     (cdr (assoc cand alist)))
+    ;;                                   candidates))))
+    ;; (add-to-list 'embark-exporters-alist
+    ;;              '(process-history . process-history-export))
 
     ;; Enable `make-process' advice
     (process-history-mode))

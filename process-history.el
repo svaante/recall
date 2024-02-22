@@ -307,10 +307,13 @@ displayed correctly."
 
 
 ;;; List
+(defvar-local process-history-local nil)
+
 (defun --list-refresh ()
   ;; TODO Should be able to filter by column value
   (setq tabulated-list-entries
-        (cl-loop for item in process-history
+        (cl-loop for item in (or process-history-local
+                                 process-history)
                  collect (list item
                                (cl-map 'vector
                                        (lambda (col)
@@ -506,11 +509,12 @@ for pruning options."
     (revert-buffer)))
 
 ;;;###autoload
-(defun process-history-list ()
+(defun process-history-list (&optional process-history)
   (interactive)
   (let ((buffer (get-buffer-create "*Process History*")))
     (with-current-buffer buffer
       (process-history-list-mode)
+      (setq process-history-local process-history)
       (auto-revert-mode)
       (revert-buffer)
       (goto-char (point-min)))
