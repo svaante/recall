@@ -17,7 +17,7 @@ Enable process surveillance with =process-history-mode=.
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
     ;; ("C-x C-r" . process-history-list)
-    ;; Or if minibuffer interface (preferable with `embark')
+    ;; Or if minibuffer completion is your preferable interface (with `embark')
     ;; ("C-x C-r" . process-history-find-log)
     :config
     ;; Where to place logs
