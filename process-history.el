@@ -45,8 +45,9 @@
 ;;; Code:
 
 (require 'cl-macs)
-(require 'tramp)
 (require 'tabulated-list)
+(require 'tramp)
+(require 'dired-aux)
 
 
 ;;; Custom
@@ -258,6 +259,8 @@ displayed correctly."
               ;; FIXME Should be possible to support other vc backends
               ;; TODO Would be nice if we could store dirty, clean etc.
               :vc (vc-working-revision (file-name-as-directory directory) 'Git))))
+        ;; `auto-revert-tail-mode' needs an file to exist
+        (dired-create-empty-file (--log-file item))
         (plist-put args :filter
                    (--make-filter item (plist-get args :filter)))
         (plist-put args :sentinel
@@ -332,8 +335,7 @@ displayed correctly."
 (define-derived-mode process-history-list-mode tabulated-list-mode "Process History"
   "List Process History."
   :interactive nil
-  (setq-local buffer-stale-function
-              (lambda (&optional _noconfirm) 'fast)
+  (setq-local buffer-stale-function (lambda (&optional _noconfirm) 'fast)
               process-history-list-mode t)
   (setq tabulated-list-use-header-line t
         tabulated-list-format process-history-list-format)
@@ -394,10 +396,7 @@ Completes from collection based on `process-history'."
                 (annotation-function . ,(--make-annotate alist))
                 (display-sort-function . identity)))
              (t
-              (complete-with-action action
-                                    alist
-                                    string
-                                    predicate)))))
+              (complete-with-action action alist string predicate)))))
          ;; Properties are added in `--collection'
          ;; Therefore we need to get back test properties to equality
          (minibuffer-allow-text-properties t))
@@ -518,7 +517,6 @@ for pruning options."
 
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
-  :interactive nil
   ;; TODO Make compatible with `auto-revert-tail-mode'
   (let ((item (cl-find-if (lambda (item)
                             (equal (--log-file item)
@@ -545,9 +543,9 @@ for pruning options."
                       concat (format (format "%%%ds: %%s\n" max-length)
                                      name (funcall accessor item)))
                      'face 'process-history-log-overlay-face)
-                    "\n")))
-    (setq default-directory (--item-directory item))))
+                    "\n")))))
 
+(add-hook 'process-history-log-mode-hook 'auto-revert-tail-mode)
 (add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
 
 ;;;###autoload
