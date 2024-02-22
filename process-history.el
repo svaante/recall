@@ -514,7 +514,12 @@ for pruning options."
       (auto-revert-mode)
       (revert-buffer)
       (goto-char (point-min)))
-    (select-window (display-buffer buffer))))
+    (select-window
+     (display-buffer buffer
+                     '((display-buffer-reuse-mode-window display-buffer-at-bottom)
+                       (window-height . 0.3)
+                       (dedicated . t)
+                       (preserve-size . (t . t)))))))
 
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
