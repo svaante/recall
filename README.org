@@ -13,10 +13,12 @@ Enable process surveillance with =process-history-mode=.
 * Configuration
 #+begin_src emacs-lisp
   (use-package process-history
-    :straight (process-history :type git :host github :repo "svaante/process-history"))
+    :straight (process-history :type git :host github :repo "svaante/process-history")
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
-    ("C-x C-r" . process-history-list)
+    ;; ("C-x C-r" . process-history-list)
+    ;; Or if minibuffer interface (preferable with `embark')
+    ;; ("C-x C-r" . process-history-find-log)
     :config
     ;; Where to place logs
     ;; (setq process-history-directory "/some/log/dir")
@@ -26,6 +28,17 @@ Enable process surveillance with =process-history-mode=.
 
     ;; Which buffers to enable process history for (comes with sensible defaults)
     ;; (add-to-list 'process-history-this-command 'shell-command)
+
+    ;; With `embark'
+    ;; (defvar-keymap embark-process-history-actions-map
+    ;;   :doc "Process history actions"
+    ;;   :parent embark-general-map
+    ;;   "k" #'process-history-process-kill
+    ;;   "c" #'process-history-rerun-with-compile
+    ;;   "&" #'process-history-rerun-with-async-shell-command
+    ;;   "w" #'process-history-copy-as-kill-command
+    ;;   "b" #'process-history-display-buffer
+    ;;   "d" #'process-history-delete-item)
 
     ;; Enable `make-process' advice
     (process-history-mode))

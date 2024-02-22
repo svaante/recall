@@ -111,17 +111,52 @@ Warning: `process-history' won't find old logs if changed.
 See `time-stamp-format'."
   :type 'string)
 
-(defcustom process-history-log-header-alist
-  `((command . --item-command)
-    (directory . --item-directory)
-    (exit-code . --item-exit-code)
-    (start-time . ,(apply-partially '--time-format-slot 'start-time))
-    (end-time . ,(apply-partially '--time-format-slot 'end-time))
-    (vc . --item-vc)
-    (condition . --item-condition))
-  "Log header specification.
-Alist of (NAME . ACCESSOR-FN)."
+(defcustom process-history-format-alist
+  `(("Command" . --item-command)
+    ("Directory" . ,(lambda (item)
+                      (propertize (--item-directory item)
+                                  'face 'process-history-directory-face)))
+    ("Start" . ,(apply-partially '--time-format-slot 'start-time))
+    ("Code" . ,(lambda (item)
+                 (if-let ((code (--item-exit-code item)))
+                     (propertize (format "%s" code)
+                                 'face
+                                 (cond
+                                  ((and-let* ((process (--item-process item)))
+                                     (process-live-p process))
+                                   'default)
+                                  ((equal (--item-exit-code item) 0)
+                                   'process-history-success-face)
+                                  (t 'process-history-error-face)))
+                   "*")))
+    ("Time" . ,(lambda (item)
+                 (format-seconds process-history-seconds-format
+                                 (- (time-to-seconds
+                                     (--item-end-time item))
+                                    (time-to-seconds (--item-start-time item))))))
+    ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
+                                        'face 'process-history-vc-face)))
+    ("Condition" . ,(lambda (item)
+                      (propertize (format "%S" (--item-condition item))
+                                  'face 'process-history-condition-face))))
+  "Log item format alist.
+Alist of (NAME . FN) pairs.  Where FN takes `process-history--item' should
+return string."
   :type 'alist)
+
+(defcustom process-history-list-format
+  (vector '("Command" 80 t)
+	  '("Directory" 45 t)
+          '("Start" 19 t)
+          '("Code" 4 t :right-align t)
+          '("Time" 8 t)
+          '("VC" 8 t)
+          '("Condition" 0 t))
+  "See `tabulated-list-format'.
+Each NAME needs to exist in `process-history-format-alist' to be
+displayed correctly."
+  :type 'vector)
+
 
 ;;; Faces
 (defface process-history-directory-face
@@ -268,43 +303,16 @@ Alist of (NAME . ACCESSOR-FN)."
 
 
 ;;; List
-(defun process-history--list-refresh ()
+(defun --list-refresh ()
   ;; TODO Should be able to filter by column value
   (setq tabulated-list-entries
-        (cl-loop
-         for item in process-history
-         collect
-         (list item
-               `[;; Command
-                 ,(--item-command item)
-                 ;; Directory
-                 ,(propertize (--item-directory item)
-                              'face 'process-history-directory-face)
-                 ;; Start
-                 ,(--time-format-slot 'start-time item)
-                 ;; Code
-                 ,(if-let ((code (--item-exit-code item)))
-                      (propertize (format "%s" code)
-                                  'face
-                                  (cond
-                                   ((and-let* ((process (--item-process item)))
-                                      (process-live-p process))
-                                    'default)
-                                   ((equal (--item-exit-code item) 0)
-                                    'process-history-success-face)
-                                   (t 'process-history-error-face)))
-                    "*")
-                 ;; Time
-                 ,(format-seconds process-history-seconds-format
-                                   (- (time-to-seconds
-                                       (--item-end-time item))
-                                      (time-to-seconds (--item-start-time item))))
-                 ;; VC
-                 ,(propertize (or (--item-vc item) "")
-                              'face 'process-history-vc-face)
-                 ;; Condition
-                 ,(propertize (format "%S" (--item-condition item))
-                              'face 'process-history-condition-face)]))))
+        (cl-loop for item in process-history
+                 collect (list item
+                               (cl-map 'vector
+                                       (lambda (col)
+                                         (funcall (cdr (assoc col process-history-format-alist))
+                                                  item))
+                                       (cl-mapcar 'car tabulated-list-format))))))
 
 (defvar-keymap process-history-list-mode-map
   :doc "Local keymap for `process-history-list-mode' buffers."
@@ -319,24 +327,82 @@ Alist of (NAME . ACCESSOR-FN)."
   "<mouse-2>"     #'process-history-find-log
   "<follow-link>" 'mouse-face)
 
+(defvar process-history-list-mode nil)
+
 (define-derived-mode process-history-list-mode tabulated-list-mode "Process History"
   "List Process History."
   :interactive nil
   (setq-local buffer-stale-function
-              (lambda (&optional _noconfirm) 'fast))
+              (lambda (&optional _noconfirm) 'fast)
+              process-history-list-mode t)
   (setq tabulated-list-use-header-line t
-        tabulated-list-format
-        (vector '("Command" 80 t)
-		'("Directory" 45 t)
-                '("Start" 19 t)
-                '("Code" 4 t :right-align t)
-                '("Time" 8 t)
-                '("VC" 8 t)
-                '("Condition" 0 t)))
+        tabulated-list-format process-history-list-format)
   (tabulated-list-init-header)
-  (add-hook 'tabulated-list-revert-hook 'process-history--list-refresh nil t))
+  (add-hook 'tabulated-list-revert-hook '--list-refresh nil t))
 
 (add-hook 'process-history-list-mode-hook 'auto-revert-mode)
+
+;;; Complete
+(defun --collection ()
+  (nreverse
+   (cl-loop with command-count = (make-hash-table :test 'equal)
+            for item in (reverse process-history)
+            for command = (--item-command item)
+            for count = (or (gethash command command-count) 0)
+            do (puthash command (1+ count) command-count)
+            collect (cons (concat command (unless (zerop count)
+                                            (propertize (format "<%d>" count)
+                                                        'face 'shadow)))
+                          item))))
+
+(defun --make-annotate (alist)
+  ;; Use `process-history-list-format' "Command" column WIDTH
+  (pcase-let ((`(_ ,max-length) (aref process-history-list-format 0)))
+    (lambda (string)
+      (let ((item (cdr (assoc string alist))))
+        (concat
+         (propertize " " 'display
+                     `(space :align-to (+ left ,max-length)))
+         " "
+         ;; HACK Use `tabulated-list-mode' to create annotation
+         (with-temp-buffer
+           (tabulated-list-mode)
+           (setq tabulated-list-format process-history-list-format)
+           ;; HACK For reasons unknown spacing gets messed up if
+           ;;      we just pop "Command" from `process-history-list-format'.
+           (let ((item (copy-tree item)))
+             (setf (--item-command item) "")
+             (setq-local process-history (list item)))
+           (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
+           (revert-buffer)
+           (string-trim-right (buffer-string))))))))
+
+(defun process-history-completing-read (prompt &optional predicate)
+  "Read a string in the minibuffer, with completion.
+PROMPT is a string to prompt with; normally it ends in a colon and a
+space.
+PREDICATE is an optional function taking command string and
+`process-history--item'.
+Completes from collection based on `process-history'."
+  (let* ((alist (--collection))
+         (collection
+          (lambda (string predicate action)
+            (cond
+             ((eq action 'metadata)
+              `(metadata
+                (category . process-history)
+                (annotation-function . ,(--make-annotate alist))
+                (display-sort-function . identity)))
+             (t
+              (complete-with-action action
+                                    alist
+                                    string
+                                    predicate)))))
+         ;; Properties are added in `--collection'
+         ;; Therefore we need to get back test properties to equality
+         (minibuffer-allow-text-properties t))
+    (alist-get (completing-read prompt collection predicate t) alist
+               nil nil 'equal)))
 
 
 ;;; Commands
@@ -378,43 +444,46 @@ for pruning options."
       (write-region (point-min) (point-max) process-history-save-file nil
 		    (unless (called-interactively-p 'interactive) 'quiet)))))
 
-(defcustom process-history-on-rerun-hooks '(quit-window)
-  "Close *Process History* buffer on rerun commands."
-  :type 'hook)
-
 (defun process-history-find-log (history-item)
   "View log file for HISTORY-ITEM."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
-  (if-let ((buffer
-            (cl-find-if (lambda (buffer)
-                          (eq history-item (with-current-buffer buffer --log-item)))
-                        (buffer-list))))
-      (pop-to-buffer buffer)
-    (find-file (--log-file history-item))
-    (process-history-log-mode)))
+  (interactive
+   (list (if process-history-list-mode (tabulated-list-get-id)
+      (process-history-completing-read "View log file: "))))
+  (find-file (--log-file history-item))
+  (process-history-log-mode))
 
 (defun process-history-display-buffer (history-item)
   "View buffer for HISTORY-ITEM."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (interactive
+   (list (if process-history-list-mode (tabulated-list-get-id)
+           (process-history-completing-read
+            "View process buffer: "
+            (pcase-lambda (`(_ . ,item))
+              (ignore-errors (process-live-p (--item-process item))))))))
   (display-buffer (process-buffer (--item-process history-item))))
 
 (defun process-history-rerun-with-compile (history-item)
   "Rerun HISTORY-ITEM with `compile'."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
-  (run-hooks 'process-history-on-rerun-hooks)
+  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
+                       (process-history-completing-read "Rerun with `compile': "))))
   (let ((default-directory (--item-directory history-item)))
     (compile (--item-command history-item))))
 
 (defun process-history-rerun-with-async-shell-command (history-item)
   "Rerun HISTORY-ITEM with `async-shell-command'."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
-  (run-hooks 'process-history-on-rerun-hooks)
+  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
+                       (process-history-completing-read "Rerun with `async-shell-command': "))))
   (let ((default-directory (--item-directory history-item)))
     (async-shell-command (--item-command history-item))))
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (interactive
+   (list (if process-history-list-mode (tabulated-list-get-id)
+           (process-history-completing-read
+            "Kill process: "
+            (pcase-lambda (`(_ . ,item))
+              (ignore-errors (process-live-p (--item-process item))))))))
   (let ((process (--item-process history-item)))
     (unless process
       (user-error "Current history item does not have an live process."))
@@ -422,12 +491,14 @@ for pruning options."
 
 (defun process-history-copy-as-kill-command (history-item)
   "Copy command of HISTORY-ITEM."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
+                       (process-history-completing-read "Copy command: "))))
   (kill-new (--item-command history-item)))
 
 (defun process-history-delete-item (history-item)
   "Delete HISTORY-ITEM."
-  (interactive (list (tabulated-list-get-id)) process-history-list-mode)
+  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
+                       (process-history-completing-read "Delete history: "))))
   (when (or (not (called-interactively-p 'all))
             (yes-or-no-p "Are you sure you want to delete history item?"))
     (delete-file (--log-file history-item))
@@ -443,19 +514,16 @@ for pruning options."
       (auto-revert-mode)
       (revert-buffer)
       (goto-char (point-min)))
-    (select-window
-     (display-buffer buffer
-                     '((display-buffer-at-bottom)
-                       (dedicated . t))))))
+    (select-window (display-buffer buffer))))
 
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
   :interactive nil
-  (let ((item
-         (cl-find-if (lambda (item)
-                       (equal (--log-file item)
-                              buffer-file-name))
-                     process-history)))
+  ;; TODO Make compatible with `auto-revert-tail-mode'
+  (let ((item (cl-find-if (lambda (item)
+                            (equal (--log-file item)
+                                   buffer-file-name))
+                          process-history)))
     (unless item
       (user-error "Unable find connection with log file %s in `process-history'"
                   buffer-file-name))
@@ -465,29 +533,20 @@ for pruning options."
                         :key (lambda (ov) (overlay-get ov 'category)))
                (make-overlay (point-min) (point-min)))))
       (overlay-put overlay 'category 'process-history-log-overlay)
-      (overlay-put overlay
-                   'before-string
+      (overlay-put overlay 'before-string
                    (concat
                     (propertize
                      (cl-loop
                       with max-length =
-                      (apply 'max (mapcar
-                                   (lambda (x)
-                                     (length (symbol-name (car x))))
-                                   process-history-log-header-alist))
-                      for (name . accessor) in process-history-log-header-alist
+                      (apply 'max (mapcar (lambda (x)
+                                            (length (car x)))
+                                          process-history-format-alist))
+                      for (name . accessor) in process-history-format-alist
                       concat (format (format "%%%ds: %%s\n" max-length)
                                      name (funcall accessor item)))
                      'face 'process-history-log-overlay-face)
                     "\n")))
-    (rename-buffer (format "*Log \"%s\" @ %s*"
-                           (--item-command item)
-                           (--time-format-slot 'start-time item))
-                   t)
-    (setq --log-item item
-          buffer-read-only t
-          buffer-file-name nil
-          default-directory (--item-directory item))))
+    (setq default-directory (--item-directory item))))
 
 (add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
 
