@@ -146,7 +146,7 @@ return string."
   :type 'alist)
 
 (defcustom process-history-list-format
-  (vector '("Command" 80 t)
+  (vector '("Command" 75 t)
 	  '("Directory" 45 t)
           '("Start" 19 t)
           '("Code" 4 t :right-align t)
@@ -358,7 +358,7 @@ displayed correctly."
                                                         'face 'shadow)))
                           item))))
 
-(defun --make-annotate (alist)
+(defun --make-annotation-function (alist)
   ;; Use `process-history-list-format' "Command" column WIDTH
   (pcase-let ((`(_ ,max-length) (aref process-history-list-format 0)))
     (lambda (string)
@@ -394,7 +394,7 @@ Completes from collection based on `process-history'."
              ((eq action 'metadata)
               `(metadata
                 (category . process-history)
-                (annotation-function . ,(--make-annotate alist))
+                (annotation-function . ,(--make-annotation-function alist))
                 (display-sort-function . identity)))
              (t
               (complete-with-action action alist string predicate)))))
