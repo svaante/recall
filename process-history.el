@@ -197,10 +197,11 @@ displayed correctly."
 
 ;;; Utils
 (defun --command-to-string (command)
-  (string-join (if (equal (nth 1 command) shell-command-switch)
-                   (nthcdr 2 command)
-                 command)
-               " "))
+  (string-trim
+   (string-join (if (equal (nth 1 command) shell-command-switch)
+                    (nthcdr 2 command)
+                  command)
+                " ")))
 
 (defun --log-file (item)
   (file-name-concat process-history-directory
@@ -243,7 +244,7 @@ displayed correctly."
      ((and
        ;; TODO Disabled for tramp as there is no world where it works
        (not (tramp-tramp-file-p directory))
-       (not (string-empty-p (string-trim command)))
+       (not (string-empty-p command))
        (setq condition
              (or (cl-find this-command
                           process-history-this-command)
