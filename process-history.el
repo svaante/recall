@@ -374,8 +374,6 @@ displayed correctly."
          (with-temp-buffer
            (tabulated-list-mode)
            (setq tabulated-list-format process-history-list-format)
-           ;; HACK For reasons unknown spacing gets messed up if
-           ;;      we just pop "Command" from `process-history-list-format'.
            (let ((item (copy-tree item)))
              (setf (--item-command item) "")
              (setq-local process-history (list item)))
