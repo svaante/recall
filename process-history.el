@@ -137,6 +137,10 @@ See `time-stamp-format'."
                                     (time-to-seconds (--item-start-time item))))))
     ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
                                         'face 'process-history-vc-face)))
+    ("PID" . ,(lambda (item)
+                (condition-case nil
+                    (format "%s" (process-id (--item-process item)))
+                  (error  ""))))
     ("Condition" . ,(lambda (item)
                       (propertize (format "%S" (--item-condition item))
                                   'face 'process-history-condition-face))))
@@ -152,6 +156,7 @@ return string."
           '("Code" 4 t :right-align t)
           '("Time" 8 t)
           '("VC" 8 t)
+          '("PID" 5 t)
           '("Condition" 0 t))
   "See `tabulated-list-format'.
 Each NAME needs to exist in `process-history-format-alist' to be
