@@ -235,6 +235,11 @@ displayed correctly."
                  else
                  do (delete-file (--log-file item)))))
 
+(defun --interactive (prompt &optional predicate)
+  (list (pcase major-mode
+          ('process-history-list (tabulated-list-get-id))
+          (_ (process-history-completing-read prompt predicate)))))
+
 
 ;;; Latch on `make-process'
 (defun --make-process (make-process &rest args)
@@ -351,6 +356,59 @@ displayed correctly."
 
 (add-hook 'process-history-list-mode-hook 'auto-revert-mode)
 
+;;;###autoload
+(defun process-history-list (&optional items)
+  (interactive)
+  (let ((buffer (get-buffer-create "*Process History*")))
+    (with-current-buffer buffer
+      (process-history-list-mode)
+      (setq process-history-local items)
+      (auto-revert-mode)
+      (revert-buffer)
+      (goto-char (point-min)))
+    (select-window
+     (display-buffer buffer
+                     '((display-buffer-reuse-mode-window display-buffer-at-bottom)
+                       (window-height . 0.3)
+                       (dedicated . t)
+                       (preserve-size . (t . t)))))))
+
+;;; Logs
+(define-derived-mode process-history-log-mode special-mode "Log"
+  "Mode active in `process-history' log files."
+  ;; TODO Auto revert overlay info
+  (let ((item (cl-find-if (lambda (item)
+                            (equal (--log-file item)
+                                   buffer-file-name))
+                          process-history)))
+    (unless item
+      (user-error "Unable find connection with log file %s in `process-history'"
+                  buffer-file-name))
+    (let ((overlay
+           (or (cl-find 'process-history-log-overlay
+                        (overlays-in (point-min) (point-max))
+                        :key (lambda (ov) (overlay-get ov 'category)))
+               (make-overlay (point-min) (point-min)))))
+      (overlay-put overlay 'category 'process-history-log-overlay)
+      (overlay-put overlay 'before-string
+                   (concat
+                    (propertize
+                     (cl-loop
+                      with max-length =
+                      (apply 'max (mapcar (lambda (x)
+                                            (length (car x)))
+                                          process-history-format-alist))
+                      for (name . accessor) in process-history-format-alist
+                      concat (format (format "%%%ds: %%s\n" max-length)
+                                     name (funcall accessor item)))
+                     'face 'process-history-log-overlay-face)
+                    "\n")))
+    (setq default-directory (--item-directory item))))
+
+(add-hook 'process-history-log-mode-hook 'auto-revert-tail-mode)
+(add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
+
+
 ;;; Complete
 (defun --collection ()
   (let ((command-count (make-hash-table :test 'equal))
@@ -452,9 +510,7 @@ for pruning options."
 
 (defun process-history-find-log (history-item)
   "View log file for HISTORY-ITEM."
-  (interactive
-   (list (if process-history-list-mode (tabulated-list-get-id)
-      (process-history-completing-read "View log file: "))))
+  (interactive (--interactive "View log file: "))
   (find-file (--log-file history-item))
   (unless (eq major-mode 'process-history-log-mode)
     (process-history-log-mode)))
@@ -462,35 +518,29 @@ for pruning options."
 (defun process-history-display-buffer (history-item)
   "View buffer for HISTORY-ITEM."
   (interactive
-   (list (if process-history-list-mode (tabulated-list-get-id)
-           (process-history-completing-read
-            "View process buffer: "
-            (pcase-lambda (`(_ . ,item))
-              (ignore-errors (process-live-p (--item-process item))))))))
+   (--interactive "View process buffer: "
+                  (pcase-lambda (`(_ . ,item))
+                    (ignore-errors (process-live-p (--item-process item))))))
   (display-buffer (process-buffer (--item-process history-item))))
 
 (defun process-history-rerun-with-compile (history-item)
   "Rerun HISTORY-ITEM with `compile'."
-  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
-                       (process-history-completing-read "Rerun with `compile': "))))
+  (interactive (--interactive "Rerun with `compile': "))
   (let ((default-directory (--item-directory history-item)))
     (compile (--item-command history-item))))
 
 (defun process-history-rerun-with-async-shell-command (history-item)
   "Rerun HISTORY-ITEM with `async-shell-command'."
-  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
-                       (process-history-completing-read "Rerun with `async-shell-command': "))))
+  (interactive (--interactive "Rerun with `async-shell-command': "))
   (let ((default-directory (--item-directory history-item)))
     (async-shell-command (--item-command history-item))))
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
   (interactive
-   (list (if process-history-list-mode (tabulated-list-get-id)
-           (process-history-completing-read
-            "Kill process: "
-            (pcase-lambda (`(_ . ,item))
-              (ignore-errors (process-live-p (--item-process item))))))))
+   (--interactive "Kill process: "
+                  (pcase-lambda (`(_ . ,item))
+                    (ignore-errors (process-live-p (--item-process item))))))
   (let ((process (--item-process history-item)))
     (unless process
       (user-error "Current history item does not have an live process."))
@@ -498,69 +548,20 @@ for pruning options."
 
 (defun process-history-copy-as-kill-command (history-item)
   "Copy command of HISTORY-ITEM."
-  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
-                       (process-history-completing-read "Copy command: "))))
+  (interactive (--interactive "Copy command: "))
   (kill-new (--item-command history-item)))
 
 (defun process-history-delete-item (history-item)
   "Delete HISTORY-ITEM."
-  (interactive (list (if process-history-list-mode (tabulated-list-get-id)
-                       (process-history-completing-read "Delete history: "))))
+  (interactive (--interactive "Delete history: "))
   (when (or (not (called-interactively-p 'all))
             (yes-or-no-p "Are you sure you want to delete history item?"))
     (delete-file (--log-file history-item))
     (setq process-history (delq history-item process-history))
     (revert-buffer)))
 
-;;;###autoload
-(defun process-history-list (&optional process-history)
-  (interactive)
-  (let ((buffer (get-buffer-create "*Process History*")))
-    (with-current-buffer buffer
-      (process-history-list-mode)
-      (setq process-history-local process-history)
-      (auto-revert-mode)
-      (revert-buffer)
-      (goto-char (point-min)))
-    (select-window
-     (display-buffer buffer
-                     '((display-buffer-reuse-mode-window display-buffer-at-bottom)
-                       (window-height . 0.3)
-                       (dedicated . t)
-                       (preserve-size . (t . t)))))))
-
-(define-derived-mode process-history-log-mode special-mode "Log"
-  "Mode active in `process-history' log files."
-  ;; TODO Make compatible with `auto-revert-tail-mode'
-  (let ((item (cl-find-if (lambda (item)
-                            (equal (--log-file item)
-                                   buffer-file-name))
-                          process-history)))
-    (unless item
-      (user-error "Unable find connection with log file %s in `process-history'"
-                  buffer-file-name))
-    (let ((overlay
-           (or (cl-find 'process-history-log-overlay
-                        (overlays-in (point-min) (point-max))
-                        :key (lambda (ov) (overlay-get ov 'category)))
-               (make-overlay (point-min) (point-min)))))
-      (overlay-put overlay 'category 'process-history-log-overlay)
-      (overlay-put overlay 'before-string
-                   (concat
-                    (propertize
-                     (cl-loop
-                      with max-length =
-                      (apply 'max (mapcar (lambda (x)
-                                            (length (car x)))
-                                          process-history-format-alist))
-                      for (name . accessor) in process-history-format-alist
-                      concat (format (format "%%%ds: %%s\n" max-length)
-                                     name (funcall accessor item)))
-                     'face 'process-history-log-overlay-face)
-                    "\n")))))
-
-(add-hook 'process-history-log-mode-hook 'auto-revert-tail-mode)
-(add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
+
+;;; Advice
 
 ;;;###autoload
 (define-minor-mode process-history-mode

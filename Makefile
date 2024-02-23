@@ -11,6 +11,7 @@ all: $(ELCFILES)
 	          -batch \
                   -no-site-file \
                   -L . \
+		  --eval '(setq byte-compile-error-on-warn t)' \
                   -f batch-byte-compile $<
 
 clean:
