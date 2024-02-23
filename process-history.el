@@ -235,8 +235,6 @@ displayed correctly."
                  else
                  do (delete-file (--log-file item)))))
 
-(defvar-local --log-item nil)
-
 
 ;;; Latch on `make-process'
 (defun --make-process (make-process &rest args)
