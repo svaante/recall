@@ -362,24 +362,18 @@ displayed correctly."
                           item))))
 
 (defun --make-annotation-function (alist)
-  ;; Use `process-history-list-format' "Command" column WIDTH
-  (pcase-let ((`(_ ,max-length) (aref process-history-list-format 0)))
-    (lambda (string)
-      (let ((item (cdr (assoc string alist))))
-        (concat
-         (propertize " " 'display
-                     `(space :align-to (+ left ,max-length)))
-         " "
-         ;; HACK Use `tabulated-list-mode' to create annotation
-         (with-temp-buffer
-           (tabulated-list-mode)
-           (setq tabulated-list-format process-history-list-format)
-           (let ((item (copy-tree item)))
-             (setf (--item-command item) "")
-             (setq-local process-history (list item)))
-           (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
-           (revert-buffer)
-           (string-trim-right (buffer-string))))))))
+  (lambda (string)
+    (let ((item (cdr (assoc string alist 'string-equal))))
+      ;; HACK Use `tabulated-list-mode' to create annotation
+      (with-temp-buffer
+        (tabulated-list-mode)
+        (setq tabulated-list-format process-history-list-format)
+        (let ((item (copy-tree item)))
+          (setf (--item-command item) "")
+          (setq-local process-history (list item)))
+        (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
+        (revert-buffer)
+        (string-trim-right (buffer-string))))))
 
 (defun process-history-completing-read (prompt &optional predicate)
   "Read a string in the minibuffer, with completion.
