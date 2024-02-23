@@ -450,7 +450,8 @@ for pruning options."
    (list (if process-history-list-mode (tabulated-list-get-id)
       (process-history-completing-read "View log file: "))))
   (find-file (--log-file history-item))
-  (process-history-log-mode))
+  (unless (eq major-mode 'process-history-log-mode)
+    (process-history-log-mode)))
 
 (defun process-history-display-buffer (history-item)
   "View buffer for HISTORY-ITEM."
