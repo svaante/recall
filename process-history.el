@@ -154,7 +154,7 @@ return string."
 	  '("Directory" 45 t)
           '("Start" 19 t)
           '("Code" 4 t :right-align t)
-          '("Time" 8 t)
+          '("Time" 8 t :right-align t)
           '("VC" 8 t)
           '("PID" 5 t)
           '("Condition" 0 t))
