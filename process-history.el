@@ -353,16 +353,24 @@ displayed correctly."
 
 ;;; Complete
 (defun --collection ()
-  (nreverse
-   (cl-loop with command-count = (make-hash-table :test 'equal)
-            for item in (reverse process-history)
-            for command = (--item-command item)
-            for count = (or (gethash command command-count) 0)
-            do (puthash command (1+ count) command-count)
-            collect (cons (concat command (unless (zerop count)
-                                            (propertize (format "<%d>" count)
-                                                        'face 'shadow)))
-                          item))))
+  (let ((command-count (make-hash-table :test 'equal))
+        (command-unique-p (make-hash-table :test 'equal)))
+    (cl-loop for item in process-history
+             for command = (--item-command item)
+             do (puthash command (1+ (gethash command command-count 0))
+                         command-count)
+             do (puthash command (eq (gethash command command-unique-p 'not-found)
+                                     'not-found)
+                         command-unique-p))
+    (cl-loop for item in process-history
+             for command = (--item-command item)
+             for count = (puthash command (1- (gethash command command-count))
+                                  command-count)
+             collect (cons (concat command
+                                   (unless (gethash command command-unique-p)
+                                     (propertize (format "<%d>" count)
+                                                 'face 'shadow)))
+                           item))))
 
 (defun --make-annotation-function (alist)
   (lambda (string)
