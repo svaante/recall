@@ -246,7 +246,12 @@ displayed correctly."
   (let ((command
          (--command-to-string (plist-get args :command)))
         (directory (or (plist-get args :directory) default-directory))
-        (buffer (or (plist-get args :buffer) (current-buffer)))
+        (buffer
+         (let ((buffer (plist-get args :buffer)))
+           (pcase buffer
+             ((pred bufferp) buffer)
+             ((pred stringp) (get-buffer buffer))
+             (_  (current-buffer)))))
         condition)
     (cond
      ((and
@@ -257,7 +262,8 @@ displayed correctly."
              (or (cl-find this-command
                           process-history-this-command)
                  (cl-find-if (lambda (condition)
-                               (buffer-match-p condition buffer))
+                               (and (bufferp buffer)
+                                    (buffer-match-p condition buffer)))
                              process-history-buffer-match))))
       (let ((item
              (make-process-history--item
