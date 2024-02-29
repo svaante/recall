@@ -255,8 +255,8 @@ displayed correctly."
         condition)
     (cond
      ((and
-       ;; TODO Disabled for tramp as there is no world where it works
-       (not (equal tramp-compat-temporary-file-directory directory))
+       ;; Skip tramp process
+       (not (equal signal-hook-function 'tramp-signal-hook-function))
        (not (string-empty-p command))
        (setq condition
              (or (cl-find this-command
