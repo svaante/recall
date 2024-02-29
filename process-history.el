@@ -237,7 +237,7 @@ displayed correctly."
 
 (defun --interactive (prompt &optional predicate)
   (list (pcase major-mode
-          ('process-history-list (tabulated-list-get-id))
+          ('process-history-list-mode (tabulated-list-get-id))
           (_ (process-history-completing-read prompt predicate)))))
 
 
