@@ -302,7 +302,13 @@ displayed correctly."
 
 (defun --make-filter (item filter)
   (let ((log-file (--log-file item))
-        (filter (or filter 'ignore)))
+        (filter (or filter
+                    (lambda (proc string)
+                      (with-current-buffer (process-buffer proc)
+                        (save-excursion
+                          (goto-char (point-max))
+                          (let ((inhibit-read-only t))
+                            (insert string))))))))
     (lambda (proc string)
       (unwind-protect
           (funcall filter proc string)
