@@ -150,7 +150,7 @@ return string."
   :type 'alist)
 
 (defcustom process-history-list-format
-  (vector '("Command" 75 t)
+  (vector '("Command" 100 t)
 	  '("Directory" 45 t)
           '("Start" 19 t)
           '("Code" 4 t :right-align t)
