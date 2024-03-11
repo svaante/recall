@@ -186,7 +186,7 @@ displayed correctly."
   "Face used in Condition column.")
 
 (defface process-history-log-overlay-face
-  '((t :inherit font-lock-comment-face :extend t))
+  '((t :inherit font-lock-comment-face))
   "Face used in `process-history-log-mode' info overlay.")
 
 
