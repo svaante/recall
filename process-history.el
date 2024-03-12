@@ -505,7 +505,7 @@ for pruning options."
                           (unless (numberp (--item-exit-code item))
                             (setf (--item-exit-code item) -1))
                           (unless (--item-end-time item)
-                            (setf (--item-exit-code item) (current-time)))
+                            (setf (--item-end-time item) (current-time)))
                           ;; Drop `process' from item
                           (take (1- (length (cl-struct-slot-info '--item)))
                                 item))
