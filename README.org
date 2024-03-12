@@ -4,7 +4,7 @@
 
 This package advices =make-process= and friends to store command,
 working directory, stdout, start time, end time, exit code and vc
-revision for all of emacs's sub-processes.
+revision for all of emacs's sub-processes (you want).
 
 Think =.bash_history= plus plus.
 
