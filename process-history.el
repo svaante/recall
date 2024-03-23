@@ -90,7 +90,7 @@ This option works in union with `process-history-buffer-match'."
                  (const :tag "Never prune." nil)))
 
 (defcustom process-history-prune-keep-unique t
-  "Keep uniqe commands in history.'"
+  "Keep uniqe commands in history."
   :type 'boolean)
 
 (defcustom process-history-timestmap-format
@@ -370,6 +370,8 @@ displayed correctly."
 
 ;;;###autoload
 (defun process-history-list (&optional items)
+  "Display an list of process history items.
+If ITEMS is non nil display all items."
   (interactive)
   (let ((buffer (get-buffer-create "*Process History*")))
     (with-current-buffer buffer
