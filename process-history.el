@@ -418,8 +418,7 @@ If ITEMS is non nil display all items."
                       concat (format (format "%%%ds: %%s\n" max-length)
                                      name (funcall accessor item)))
                      'face 'process-history-log-overlay-face)
-                    "\n")))
-    (setq default-directory (--item-directory item))))
+                    "\n")))))
 
 (add-hook 'process-history-log-mode-hook 'auto-revert-tail-mode)
 (add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
