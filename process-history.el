@@ -350,7 +350,8 @@ displayed correctly."
   "x"             #'process-history-copy-as-kill-command
   "c"             #'process-history-rerun-with-compile
   "&"             #'process-history-rerun-with-async-shell-command
-  "d"             #'process-history-delete-item
+  "!"             #'process-history-rerun-with-async-shell-command
+  "r"             #'process-history-delete-item
   "<mouse-2>"     #'process-history-find-log
   "<follow-link>" 'mouse-face)
 
