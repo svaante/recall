@@ -391,10 +391,11 @@ If ITEMS is non nil display all items."
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
   ;; TODO Auto revert overlay info
-  (let ((item (cl-find-if (lambda (item)
-                            (equal (--log-file item)
-                                   buffer-file-name))
-                          process-history)))
+  (let ((item
+         (cl-find-if (lambda (item)
+                       (equal (--log-file item)
+                              buffer-file-name))
+                     process-history)))
     (unless item
       (user-error "Unable find connection with log file %s in `process-history'"
                   buffer-file-name))
