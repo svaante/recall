@@ -536,7 +536,13 @@ for pruning options."
    (--interactive "View process buffer: "
                   (pcase-lambda (`(_ . ,item))
                     (ignore-errors (process-live-p (--item-process item))))))
-  (display-buffer (process-buffer (--item-process history-item))))
+  (let ((process (--item-process history-item)) buffer)
+    (unless (processp process)
+      (user-error "No process associated with HISTORY-ITEM"))
+    (setq buffer (process-buffer process))
+    (unless (and (bufferp buffer) (buffer-live-p buffer))
+      (user-error "Buffer killed"))
+    (display-buffer buffer)))
 
 (defun process-history-rerun-with-compile (history-item)
   "Rerun HISTORY-ITEM with `compile'."
