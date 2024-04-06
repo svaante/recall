@@ -345,7 +345,7 @@ displayed correctly."
   :doc "Local keymap for `process-history-list-mode' buffers."
   :parent tabulated-list-mode-map
   "C-m"           #'process-history-find-log
-  "C-c C-k"       #'process-history-process-kill
+  "d"             #'process-history-process-kill
   "o"             #'process-history-display-buffer
   "x"             #'process-history-copy-as-kill-command
   "c"             #'process-history-rerun-with-compile
