@@ -378,7 +378,6 @@ If ITEMS is non nil display all items."
     (with-current-buffer buffer
       (process-history-list-mode)
       (setq process-history-local items)
-      (auto-revert-mode)
       (revert-buffer)
       (goto-char (point-min)))
     (select-window
@@ -420,7 +419,7 @@ If ITEMS is non nil display all items."
                      'face 'process-history-log-overlay-face)
                     "\n")))))
 
-(add-hook 'process-history-log-mode-hook 'auto-revert-tail-mode)
+(add-hook 'process-history-log-mode-hook 'turn-on-auto-revert-tail-mode)
 (add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
 
 
