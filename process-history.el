@@ -217,9 +217,13 @@ displayed correctly."
   (setq process-history
         (cl-loop with command-set = (make-hash-table :test 'equal)
                  for item in process-history
+                 for directory = (--item-directory item)
                  for command = (--item-command item)
-                 for unique-command-p = (not (gethash command command-set))
-                 do (puthash command t command-set)
+                 ;; An history item is not unique if another item
+                 ;; shares command and directory.
+                 for key = (cons command directory)
+                 for unique-command-p = (not (gethash key command-set))
+                 do (puthash key t command-set)
                  if (or (not process-history-prune-after)
                         (< (- (time-to-seconds)
                                 (time-to-seconds
