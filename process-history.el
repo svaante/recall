@@ -140,10 +140,7 @@ See `time-stamp-format'."
     ("PID" . ,(lambda (item)
                 (condition-case nil
                     (format "%s" (process-id (--item-process item)))
-                  (error  ""))))
-    ("Condition" . ,(lambda (item)
-                      (propertize (format "%S" (--item-condition item))
-                                  'face 'process-history-condition-face))))
+                  (error  "")))))
   "Log item format alist.
 Alist of (NAME . FN) pairs.  Where FN takes `process-history--item' should
 return string."
@@ -156,8 +153,7 @@ return string."
           '("Code" 4 t :right-align t)
           '("Time" 8 t :right-align t)
           '("VC" 8 t)
-          '("PID" 5 t)
-          '("Condition" 0 t))
+          '("PID" 5 t))
   "See `tabulated-list-format'.
 Each NAME needs to exist in `process-history-format-alist' to be
 displayed correctly."
