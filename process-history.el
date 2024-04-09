@@ -159,6 +159,12 @@ Each NAME needs to exist in `process-history-format-alist' to be
 displayed correctly."
   :type 'vector)
 
+(defcustom process-history-completing-read-fn
+  #'process-history-completing-read
+  "Function used to complete process history candidates.
+See `process-history-completing-read'."
+  :type 'function)
+
 
 ;;; Faces
 (defface process-history-directory-face
@@ -238,7 +244,7 @@ displayed correctly."
 (defun --interactive (prompt &optional predicate)
   (list (pcase major-mode
           ('process-history-list-mode (tabulated-list-get-id))
-          (_ (process-history-completing-read prompt predicate)))))
+          (_ (funcall process-history-completing-read-fn prompt predicate)))))
 
 
 ;;; Latch on `make-process'
