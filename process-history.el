@@ -312,6 +312,8 @@ displayed correctly."
     (lambda (proc string)
       (unwind-protect
           (funcall filter proc string)
+        ;; TODO Allow for filter function hooks like
+        ;;      `comint-output-filter-functions'.
         (write-region string nil log-file 'append 'no-echo)))))
 
 (defun --make-sentinel (item sentinel)
