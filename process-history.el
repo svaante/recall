@@ -525,8 +525,8 @@ for pruning options."
 		    (unless (called-interactively-p 'interactive) 'quiet)))))
 
 (defun process-history-find-log (history-item)
-  "View log file for HISTORY-ITEM."
-  (interactive (--interactive "View log file: "))
+  "View log for HISTORY-ITEM."
+  (interactive (--interactive "View log: "))
   (find-file (--log-file history-item))
   (unless (eq major-mode 'process-history-log-mode)
     (process-history-log-mode)))
