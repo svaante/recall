@@ -78,6 +78,8 @@ This option works in union with `process-history-this-command'."
 (defcustom process-history-this-command
   '(shell-command
     async-shell-command
+    project-shell-command
+    project-async-shell-command
     process-history-rerun-with-compile
     process-history-rerun-with-async-shell-command)
   "Which commands to enable process history for.
