@@ -320,7 +320,10 @@ See `process-history-completing-read'."
           (funcall filter proc string)
         ;; TODO Allow for filter function hooks like
         ;;      `comint-output-filter-functions'.
-        (write-region string nil log-file 'append 'no-echo)))))
+        (write-region string nil log-file 'append 'no-echo)
+        (when-let ((buffer (get-file-buffer log-file)))
+          (with-current-buffer buffer
+            (revert-buffer nil t t)))))))
 
 (defun --make-sentinel (item sentinel)
   (let ((sentinel (or sentinel 'ignore)))
@@ -427,7 +430,6 @@ If ITEMS is non nil display all items."
                      'face 'process-history-log-overlay-face)
                     "\n")))))
 
-(add-hook 'process-history-log-mode-hook 'turn-on-auto-revert-tail-mode)
 (add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
 
 
