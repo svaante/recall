@@ -13,7 +13,15 @@ Enable process surveillance with =process-history-mode=.
 * Configuration
 #+begin_src emacs-lisp
   (use-package process-history
-    :straight (process-history :type git :host github :repo "svaante/process-history")
+    :straight (process-history
+               :type git :host github
+               :repo "svaante/process-history"
+               :files (:defaults "extensions/*")
+               :includes (;; Consult integration
+                          ;; process-history-consult
+                          ;; Embark integration
+                          ;; process-history-embark
+                          ))
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
     ;; ("C-x C-r" . process-history-list)
@@ -27,27 +35,10 @@ Enable process surveillance with =process-history-mode=.
     ;; (add-to-list 'process-history-buffer-match "\\*dape-shell\\*")
 
     ;; Which buffers to enable process history for (comes with sensible defaults)
-    ;; (add-to-list 'process-history-this-command 'shell-command)
+    ;; (add-to-list 'process-history-this-command 'dired-shell-command)
 
-    ;; With `embark'
-    ;; (defvar-keymap embark-process-history-actions-map
-    ;;   :doc "Process history actions"
-    ;;   :parent embark-general-map
-    ;;   "k" #'process-history-process-kill
-    ;;   "c" #'process-history-rerun-with-compile
-    ;;   "&" #'process-history-rerun-with-async-shell-command
-    ;;   "w" #'process-history-copy-as-kill-command
-    ;;   "b" #'process-history-display-buffer
-    ;;   "d" #'process-history-delete-item)
-    ;; (add-to-list 'embark-keymap-alist
-    ;;              '(process-history . embark-process-history-actions-map))
-    ;; (defun process-history-export (candidates)
-    ;;   (let ((alist (process-history--collection)))
-    ;;     (process-history-list (mapcar (lambda (cand)
-    ;;                                     (cdr (assoc cand alist)))
-    ;;                                   candidates))))
-    ;; (add-to-list 'embark-exporters-alist
-    ;;              '(process-history . process-history-export))
+    ;; Consult integration
+    ;; (setq process-history-completing-read-fn 'process-history-consult-completing-read)
 
     ;; Enable `make-process' advice
     (process-history-mode))
