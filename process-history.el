@@ -430,8 +430,6 @@ If ITEMS is non nil display all items."
                      'face 'process-history-log-overlay-face)
                     "\n")))))
 
-(add-hook 'process-history-log-mode-hook 'compilation-minor-mode)
-
 
 ;;; Complete
 (defun --collection ()
