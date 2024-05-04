@@ -80,12 +80,18 @@ This option works in union with `process-history-this-command'."
   '(shell-command
     async-shell-command
     project-shell-command
-    project-async-shell-command
-    process-history-rerun-with-compile
-    process-history-rerun-with-async-shell-command)
+    project-async-shell-command)
   "Which commands to enable process history for.
 This option works in union with `process-history-buffer-match'."
   :type '(repeat function))
+
+(defcustom process-history-rerun-alist
+  '((nil . async-shell-command)
+    ((major-mode . compilation-mode) . compile))
+  "Rerun command from ALIST specification (CONDITION . FN).
+Where condition is either an item in `process-history-buffer-match',
+`process-history-this-command' or nil for anything else."
+  :type 'alist)
 
 (defcustom process-history-prune-after (* 60 24 7 3)
   "Prune history after seconds on `process-history-save'."
@@ -258,6 +264,8 @@ See `process-history-completing-read'."
 
 
 ;;; Latch on `make-process'
+(defvar --condition nil)
+
 (defun --make-process (make-process &rest args)
   (let ((command
          (--command-to-string (plist-get args :command)))
@@ -275,12 +283,15 @@ See `process-history-completing-read'."
        (not (equal signal-hook-function 'tramp-signal-hook-function))
        (not (string-empty-p command))
        (setq condition
-             (or (cl-find this-command
-                          process-history-this-command)
-                 (cl-find-if (lambda (condition)
-                               (and (bufferp buffer)
-                                    (buffer-match-p condition buffer)))
-                             process-history-buffer-match))))
+             (or
+              ;; Injected from `process-history-rerun'
+              --condition
+              (cl-find this-command
+                       process-history-this-command)
+              (cl-find-if (lambda (condition)
+                            (and (bufferp buffer)
+                                 (buffer-match-p condition buffer)))
+                          process-history-buffer-match))))
       (let ((item
              (make-process-history--item
               :command command
@@ -366,13 +377,11 @@ See `process-history-completing-read'."
   :doc "Local keymap for `process-history-list-mode' buffers."
   :parent tabulated-list-mode-map
   "C-m"           #'process-history-find-log
-  "d"             #'process-history-process-kill
+  "K"             #'process-history-process-kill
+  "r"             #'process-history-rerun
   "o"             #'process-history-display-buffer
   "x"             #'process-history-copy-as-kill-command
-  "c"             #'process-history-rerun-with-compile
-  "&"             #'process-history-rerun-with-async-shell-command
-  "!"             #'process-history-rerun-with-async-shell-command
-  "r"             #'process-history-delete-item
+  "d"             #'process-history-delete-item
   "<mouse-2>"     #'process-history-find-log
   "<follow-link>" 'mouse-face)
 
@@ -561,17 +570,15 @@ for pruning options."
       (user-error "Buffer killed"))
     (display-buffer buffer)))
 
-(defun process-history-rerun-with-compile (history-item)
-  "Rerun HISTORY-ITEM with `compile'."
-  (interactive (--interactive "Rerun with `compile': "))
-  (let ((default-directory (--item-directory history-item)))
-    (compile (--item-command history-item))))
-
-(defun process-history-rerun-with-async-shell-command (history-item)
-  "Rerun HISTORY-ITEM with `async-shell-command'."
-  (interactive (--interactive "Rerun with `async-shell-command': "))
-  (let ((default-directory (--item-directory history-item)))
-    (async-shell-command (--item-command history-item))))
+(defun process-history-rerun (history-item)
+  "Rerun command from HISTORY-ITEM."
+  (interactive (--interactive "Rerun command: "))
+  (let ((default-directory (--item-directory history-item))
+        (--condition (--item-condition history-item)))
+    (funcall (cdr
+              (or (assoc --condition process-history-rerun-alist)
+                  (assoc nil process-history-rerun-alist)))
+             (--item-command history-item))))
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."

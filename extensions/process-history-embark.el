@@ -42,9 +42,7 @@
   :parent embark-general-map
   "f" #'process-history-find-log
   "k" #'process-history-process-kill
-  "r" #'process-history-rerun-with-async-shell-command
-  "c" #'process-history-rerun-with-compile
-  "!" #'process-history-rerun-with-async-shell-command
+  "r" #'process-history-rerun
   "w" #'process-history-copy-as-kill-command
   "b" #'process-history-display-buffer
   "d" #'process-history-delete-item)
