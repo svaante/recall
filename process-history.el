@@ -48,6 +48,7 @@
 (require 'tabulated-list)
 (require 'tramp)
 (require 'dired-aux)
+(require 'esh-mode)
 
 
 ;;; Custom
@@ -206,11 +207,18 @@ See `process-history-completing-read'."
 
 ;;; Utils
 (defun --command-to-string (command)
-  (string-trim
-   (string-join (if (equal (nth 1 command) shell-command-switch)
-                    (nthcdr 2 command)
-                  command)
-                " ")))
+  (cond
+   ((eq this-command 'eshell-send-input)
+    ;; HACK Use un-expanded paths in `eshell'
+    (buffer-substring-no-properties
+     eshell-last-input-start
+     (1- eshell-last-input-end)))
+   (t
+    (string-trim
+     (string-join (if (equal (nth 1 command) shell-command-switch)
+                      (nthcdr 2 command)
+                    command)
+                  " ")))))
 
 (defun --log-file (item)
   (file-name-concat process-history-directory
