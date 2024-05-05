@@ -564,7 +564,7 @@ for pruning options."
       (user-error "No process associated with HISTORY-ITEM"))
     (setq buffer (process-buffer process))
     (unless (and (bufferp buffer) (buffer-live-p buffer))
-      (user-error "Buffer killed %s" buffer))
+      (user-error "Buffer killed"))
     (cl-loop
      for item in process-history
      until (eq item history-item)
