@@ -558,17 +558,30 @@ for pruning options."
 
 (defun process-history-display-buffer (history-item)
   "View buffer for HISTORY-ITEM."
-  (interactive
-   (--interactive "View process buffer: "
-                  (pcase-lambda (`(_ . ,item))
-                    (ignore-errors (process-live-p (--item-process item))))))
+  (interactive (--interactive "View process buffer: "))
   (let ((process (--item-process history-item)) buffer)
     (unless (processp process)
       (user-error "No process associated with HISTORY-ITEM"))
     (setq buffer (process-buffer process))
     (unless (and (bufferp buffer) (buffer-live-p buffer))
-      (user-error "Buffer killed"))
+      (user-error "Buffer killed %s" buffer))
+    (cl-loop
+     for item in process-history
+     until (eq item history-item)
+     for other-process = (--item-process item)
+     when (and (processp other-process)
+               (eq (process-buffer other-process)
+                   buffer))
+     do (user-error "Other process %s using buffer" other-process))
     (display-buffer buffer)))
+
+(defun process-history-find-dwim (history-item)
+  "View buffer or log associated with HISTORY-ITEM."
+  (interactive (--interactive "View log or buffer: "))
+  (condition-case _
+      (process-history-display-buffer history-item)
+    (user-error
+     (process-history-find-log history-item))))
 
 (defun process-history-rerun (history-item)
   "Rerun command from HISTORY-ITEM."
