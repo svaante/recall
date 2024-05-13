@@ -418,36 +418,44 @@ If ITEMS is non nil display all items."
                        (preserve-size . (t . t)))))))
 
 ;;; Logs
+(defvar --log-filter-functions nil)
+
+(defvar-local --log-item nil)
+
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
   ;; TODO Auto revert overlay info
-  (let ((item
-         (cl-find-if (lambda (item)
-                       (equal (--log-file item)
-                              buffer-file-name))
-                     process-history)))
-    (unless item
-      (user-error "Unable find connection with log file %s in `process-history'"
-                  buffer-file-name))
-    (let ((overlay
-           (or (cl-find 'process-history-log-overlay
-                        (overlays-in (point-min) (point-max))
-                        :key (lambda (ov) (overlay-get ov 'category)))
-               (make-overlay (point-min) (point-min)))))
-      (overlay-put overlay 'category 'process-history-log-overlay)
-      (overlay-put overlay 'before-string
-                   (concat
-                    (propertize
-                     (cl-loop
-                      with max-length =
-                      (apply 'max (mapcar (lambda (x)
-                                            (length (car x)))
-                                          process-history-format-alist))
-                      for (name . accessor) in process-history-format-alist
-                      concat (format (format "%%%ds: %%s\n" max-length)
-                                     name (funcall accessor item)))
-                     'face 'process-history-log-overlay-face)
-                    "\n")))))
+  (setq --log-item
+        (cl-find-if (lambda (item)
+                      (equal (--log-file item) buffer-file-name))
+                    process-history))
+  (unless --log-item
+    (user-error "Unable find connection with log file %s in `process-history'"
+                buffer-file-name))
+  (let ((overlay
+         (or (cl-find 'process-history-log-overlay
+                      (overlays-in (point-min) (point-max))
+                      :key (lambda (ov) (overlay-get ov 'category)))
+             (make-overlay (point-min) (point-min)))))
+    (overlay-put overlay 'category 'process-history-log-overlay)
+    (overlay-put overlay 'before-string
+                 (concat
+                  (propertize
+                   (cl-loop
+                    with max-length =
+                    (apply 'max (mapcar (lambda (x)
+                                          (length (car x)))
+                                        process-history-format-alist))
+                    for (name . accessor) in process-history-format-alist
+                    concat (format (format "%%%ds: %%s\n" max-length)
+                                   name (funcall accessor --log-item)))
+                   'face 'process-history-log-overlay-face)
+                  "\n")))
+  (setq buffer-file-name nil
+        default-directory (--item-directory --log-item))
+  (rename-buffer (format "*Log %S*" (--item-command --log-item)))
+  (let ((inhibit-read-only t))
+    (run-hooks '--log-filter-functions)))
 
 
 ;;; Complete
