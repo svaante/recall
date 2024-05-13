@@ -453,7 +453,7 @@ If ITEMS is non nil display all items."
                   "\n")))
   (setq buffer-file-name nil
         default-directory (--item-directory --log-item))
-  (rename-buffer (format "*Log %S*" (--item-command --log-item)))
+  (rename-buffer (format "*Log %S*" (--item-command --log-item)) t)
   (let ((inhibit-read-only t))
     (run-hooks '--log-filter-functions)))
 
