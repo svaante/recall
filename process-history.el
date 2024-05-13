@@ -457,6 +457,11 @@ If ITEMS is non nil display all items."
   (let ((inhibit-read-only t))
     (run-hooks '--log-filter-functions)))
 
+(defun --log-asni-color-filter ()
+  (ansi-color-apply-on-region (point-min) (point-max)))
+
+(add-hook '--log-filter-functions #'--log-asni-color-filter)
+
 
 ;;; Complete
 (defun --collection ()
