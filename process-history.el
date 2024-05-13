@@ -591,10 +591,10 @@ for pruning options."
 (defun process-history-find-dwim (history-item)
   "View buffer or log associated with HISTORY-ITEM."
   (interactive (--interactive "View log or buffer: "))
-  (condition-case _
-      (process-history-display-buffer history-item)
-    (user-error
-     (process-history-find-log history-item))))
+  (let ((process (--item-process history-item)))
+    (if (and (processp process) (process-live-p process))
+        (process-history-display-buffer history-item)
+      (process-history-find-log history-item))))
 
 (defun process-history-rerun (history-item)
   "Rerun command from HISTORY-ITEM."
