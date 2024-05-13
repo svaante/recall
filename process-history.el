@@ -565,8 +565,13 @@ for pruning options."
 (defun process-history-find-log (history-item)
   "View log for HISTORY-ITEM."
   (interactive (--interactive "View log: "))
-  (find-file (--log-file history-item))
-  (unless (eq major-mode 'process-history-log-mode)
+  (if-let ((buffer
+            (cl-find history-item
+                     (buffer-list)
+                     :key (lambda (buffer)
+                            (with-current-buffer buffer --log-item)))))
+      (pop-to-buffer buffer)
+    (find-file (--log-file history-item))
     (process-history-log-mode)))
 
 (defun process-history-display-buffer (history-item)
