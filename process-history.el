@@ -147,9 +147,8 @@ See `time-stamp-format'."
     ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
                                         'face 'process-history-vc-face)))
     ("PID" . ,(lambda (item)
-                (condition-case nil
-                    (format "%s" (process-id (--item-process item)))
-                  (error  "")))))
+                (ignore-errors
+                  (format "%s" (process-id (--item-process item)))))))
   "Log item format alist.
 Alist of (NAME . FN) pairs.  Where FN takes `process-history--item' should
 return string."
@@ -364,14 +363,18 @@ See `process-history-completing-read'."
 (defun --list-refresh ()
   ;; TODO Should be able to filter by column value
   (setq tabulated-list-entries
-        (cl-loop for item in (or process-history-local
-                                 process-history)
-                 collect (list item
-                               (cl-map 'vector
-                                       (lambda (col)
-                                         (funcall (cdr (assoc col process-history-format-alist))
-                                                  item))
-                                       (cl-mapcar 'car tabulated-list-format))))))
+        (cl-loop
+         for item in (or process-history-local
+                         process-history)
+         collect
+         (list
+          item
+          (cl-map 'vector
+                  (lambda (col)
+                    (or (funcall (cdr (assoc col process-history-format-alist))
+                                 item)
+                        ""))
+                  (cl-mapcar 'car tabulated-list-format))))))
 
 (defvar-keymap process-history-list-mode-map
   :doc "Local keymap for `process-history-list-mode' buffers."
@@ -447,8 +450,10 @@ If ITEMS is non nil display all items."
                                           (length (car x)))
                                         process-history-format-alist))
                     for (name . accessor) in process-history-format-alist
+                    for value = (funcall accessor --log-item)
+                    when value
                     concat (format (format "%%%ds: %%s\n" max-length)
-                                   name (funcall accessor --log-item)))
+                                   name value))
                    'face 'process-history-log-overlay-face)
                   "\n")))
   (setq buffer-file-name nil
