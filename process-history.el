@@ -382,7 +382,7 @@ See `process-history-completing-read'."
   "C-m"           #'process-history-find-log
   "K"             #'process-history-process-kill
   "r"             #'process-history-rerun
-  "o"             #'process-history-display-buffer
+  "o"             #'process-history-buffer
   "x"             #'process-history-copy-as-kill-command
   "d"             #'process-history-delete-item
   "<mouse-2>"     #'process-history-find-log
@@ -579,7 +579,7 @@ for pruning options."
     (find-file (--log-file history-item))
     (process-history-log-mode)))
 
-(defun process-history-display-buffer (history-item)
+(defun process-history-buffer (history-item)
   "View buffer for HISTORY-ITEM."
   (interactive (--interactive "View process buffer: "))
   (let ((process (--item-process history-item)) buffer)
@@ -596,14 +596,14 @@ for pruning options."
                (eq (process-buffer other-process)
                    buffer))
      do (user-error "Other process %s using buffer" other-process))
-    (display-buffer buffer)))
+    (pop-to-buffer buffer)))
 
 (defun process-history-find-dwim (history-item)
   "View buffer or log associated with HISTORY-ITEM."
   (interactive (--interactive "View log or buffer: "))
   (let ((process (--item-process history-item)))
     (if (and (processp process) (process-live-p process))
-        (process-history-display-buffer history-item)
+        (process-history-buffer history-item)
       (process-history-find-log history-item))))
 
 (defun process-history-rerun (history-item)
