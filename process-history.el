@@ -266,20 +266,18 @@ See `process-history-completing-read'."
 (defvar --condition nil)
 
 (defun --make-process (make-process &rest args)
-  (let ((command
-         (--command-to-string (plist-get args :command)))
-        (directory (or (plist-get args :directory) default-directory))
-        (buffer
-         (let ((buffer (plist-get args :buffer)))
-           (pcase buffer
-             ((pred bufferp) buffer)
-             ((pred stringp) (get-buffer buffer))
-             (_  (current-buffer)))))
-        condition)
+  (let (command directory buffer condition)
     (cond
      ((and
        ;; Skip tramp process
        (not (equal signal-hook-function 'tramp-signal-hook-function))
+       (setq command (--command-to-string (plist-get args :command))
+             directory (or (plist-get args :directory) default-directory)
+             buffer (let ((buffer (plist-get args :buffer)))
+                      (pcase buffer
+                        ((pred bufferp) buffer)
+                        ((pred stringp) (get-buffer buffer))
+                        (_  (current-buffer)))))
        (not (string-empty-p command))
        (setq condition
              (or
