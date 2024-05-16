@@ -49,22 +49,26 @@ Completes from collection based on `process-history'."
           (seq-filter (or predicate 'identity)
                       (process-history--collection)))
          (base-source
-          `(:hidden  t
-            :annotate ,(process-history--make-annotation-function alist)
+          `(:annotate ,(process-history--make-annotation-function alist)
             :category process-history))
          (sources
-          `((:hidden nil
-             :default t
-             :items ,(mapcar 'car alist)
-             :annotate ,(process-history--make-annotation-function alist)
-             :category process-history)
-            (:narrow (?a . "Active")
+          `((:name "Active"
+             :narrow ?a
              :items ,(mapcan (pcase-lambda (`(,str . ,item))
                                (unless (process-history--item-exit-code item)
                                  (list str)))
                              alist)
              ,@base-source)
-            (:narrow (?p . "Project")
+            (:name "Exited"
+             :narrow ?f
+             :items ,(mapcan (pcase-lambda (`(,str . ,item))
+                                     (when (process-history--item-exit-code item)
+                                       (list str)))
+                                   alist)
+             ,@base-source)
+            (:name "Project"
+             :narrow ?p
+             :hidden t
              :items
              ,(when-let* ((root (consult--project-root))
                           (root (abbreviate-file-name root)))
