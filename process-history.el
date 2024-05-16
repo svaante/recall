@@ -123,9 +123,6 @@ See `time-stamp-format'."
 
 (defcustom process-history-format-alist
   `(("Command" . --item-command)
-    ("Directory" . ,(lambda (item)
-                      (propertize (--item-directory item)
-                                  'face 'process-history-directory-face)))
     ("Start" . ,(apply-partially '--time-format-slot 'start-time))
     ("Code" . ,(lambda (item)
                  (if-let ((code (--item-exit-code item)))
@@ -144,6 +141,9 @@ See `time-stamp-format'."
                                  (- (time-to-seconds
                                      (--item-end-time item))
                                     (time-to-seconds (--item-start-time item))))))
+    ("Directory" . ,(lambda (item)
+                      (propertize (--item-directory item)
+                                  'face 'process-history-directory-face)))
     ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
                                         'face 'process-history-vc-face)))
     ("PID" . ,(lambda (item)
@@ -155,13 +155,12 @@ return string."
   :type 'alist)
 
 (defcustom process-history-list-format
-  (vector '("Command" 100 t)
-	  '("Directory" 45 t)
-          '("Start" 19 t)
+  (vector '("Command" 80 t)
+          '("Start" 19 t )
           '("Code" 4 t :right-align t)
           '("Time" 8 t :right-align t)
-          '("VC" 8 t)
-          '("PID" 5 t))
+	  '("Directory" 45 t)
+          '("VC" 8 t))
   "See `tabulated-list-format'.
 Each NAME needs to exist in `process-history-format-alist' to be
 displayed correctly."
