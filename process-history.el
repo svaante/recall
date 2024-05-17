@@ -298,7 +298,6 @@ See `process-history-completing-read'."
               ;; FIXME Should be possible to support other vc backends
               ;; TODO Would be nice if we could store dirty, clean etc.
               :vc (vc-working-revision (file-name-as-directory directory) 'Git))))
-        ;; `auto-revert-tail-mode' needs an file to exist
         (dired-create-empty-file (--log-file item))
         (plist-put args :filter
                    (--make-filter item (plist-get args :filter)))
@@ -378,10 +377,10 @@ See `process-history-completing-read'."
   :doc "Local keymap for `process-history-list-mode' buffers."
   :parent tabulated-list-mode-map
   "C-m"           #'process-history-find-log
-  "K"             #'process-history-process-kill
+  "D"             #'process-history-process-kill
   "r"             #'process-history-rerun
   "o"             #'process-history-buffer
-  "x"             #'process-history-copy-as-kill-command
+  "w"             #'process-history-copy-as-kill-command
   "d"             #'process-history-delete-item
   "<mouse-2>"     #'process-history-find-log
   "<follow-link>" 'mouse-face)
