@@ -432,6 +432,9 @@ If ITEMS is non nil display all items."
   (unless --log-item
     (user-error "Unable find connection with log file %s in `process-history'"
                 buffer-file-name))
+  (unless (file-exists-p buffer-file-name)
+    (let ((inhibit-read-only t))
+      (insert (propertize "* Log has been deleted *" 'face 'warning))))
   (let ((overlay
          (or (cl-find 'process-history-log-overlay
                       (overlays-in (point-min) (point-max))
