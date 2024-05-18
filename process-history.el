@@ -123,27 +123,34 @@ See `time-stamp-format'."
 
 (defcustom process-history-format-alist
   `(("Command" . --item-command)
-    ("Directory" . ,(lambda (item)
-                      (propertize (directory-file-name (--item-directory item))
-                                  'face 'process-history-directory-face)))
-    ("Start" . ,(apply-partially '--time-format-slot 'start-time))
-    ("Code" . ,(lambda (item)
+    ("Start" . ,(lambda (item)
+                  (propertize (--format-time (--item-start-time item))
+                              'face 'process-history-time-face)))
+    ("RC" . ,(lambda (item)
                  (if-let ((code (--item-exit-code item)))
-                     (propertize (format "%s" code)
-                                 'face
-                                 (cond
-                                  ((and-let* ((process (--item-process item)))
-                                     (process-live-p process))
-                                   'default)
-                                  ((equal (--item-exit-code item) 0)
-                                   'process-history-success-face)
-                                  (t 'process-history-error-face)))
+                     (propertize
+                      (format "%s" code)
+                      'face
+                      (cond
+                       ((and-let* ((process (--item-process item)))
+                          (process-live-p process))
+                        'default)
+                       ((equal (--item-exit-code item) 0)
+                        'process-history-success-face)
+                       (t 'process-history-error-face)))
                    "*")))
     ("Time" . ,(lambda (item)
-                 (format-seconds process-history-seconds-format
-                                 (- (time-to-seconds
-                                     (--item-end-time item))
-                                    (time-to-seconds (--item-start-time item))))))
+                 (propertize
+                  (--relative-time
+                   (- (time-to-seconds (--item-end-time item))
+                      (time-to-seconds (--item-start-time item))))
+                  'face 'process-history-time-face)))
+    ("Directory" . ,(lambda (item)
+                      (propertize
+                       (string-truncate-left
+                        (directory-file-name (--item-directory item))
+                        30)
+                       'face 'process-history-directory-face)))
     ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
                                         'face 'process-history-vc-face)))
     ("PID" . ,(lambda (item)
@@ -156,11 +163,11 @@ return string."
 
 (defcustom process-history-list-format
   (vector '("Command" 80 t)
-	  '("Directory" 45 t)
-          '("Start" 19 t )
-          '("Code" 4 t :right-align t)
+          '("Start" 13 t :right-align t)
+          '("RC" 4 t :right-align t)
           '("Time" 8 t :right-align t)
-          '("VC" 8 t)
+	  '("Directory" 30 t :right-align t)
+          '("VC" 8 t :right-align t)
           '("PID" 8 t :right-align t))
   "See `tabulated-list-format'.
 Each NAME needs to exist in `process-history-format-alist' to be
@@ -176,8 +183,12 @@ See `process-history-completing-read'."
 
 ;;; Faces
 (defface process-history-directory-face
-  '((t :inherit dired-directory))
+  '((t :inherit normal))
   "Face used in Directory column.")
+
+(defface process-history-time-face
+  '((t :inherit diary-time))
+  "Face used to highlight time.")
 
 (defface process-history-success-face
   '((t :inherit success))
@@ -230,9 +241,18 @@ See `process-history-completing-read'."
                     (format-time-string process-history-log-format
                                         (--item-start-time item))))
 
-(defun --time-format-slot (slot item)
-  (format-time-string process-history-timestmap-format
-                      (nth (cl-struct-slot-offset '--item slot) item)))
+(defun --relative-time (diff)
+  (cond
+   ((> diff (* 24 60 60)) (format-seconds "%dd %hh" diff))
+   ((> diff (* 60 60)) (format-seconds "%hh %mm" diff))
+   (t (format-seconds "%mm %ss%z" diff))))
+
+(defun --format-time (time)
+  (let ((diff (- (time-to-seconds nil)
+                 (time-to-seconds time))))
+    (if (> diff (* 7 24 60 60))
+        (format-time-string "%b %d %H:%M" time)
+      (format "%s ago" (--relative-time diff)))))
 
 (defun --prune ()
   (setq process-history
