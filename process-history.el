@@ -434,7 +434,9 @@ If ITEMS is non nil display all items."
                 buffer-file-name))
   (unless (file-exists-p buffer-file-name)
     (let ((inhibit-read-only t))
-      (insert (propertize "* Log has been deleted *" 'face 'warning))))
+      (save-excursion
+        (insert (propertize "* Log file has been deleted *"
+                            'face 'warning)))))
   (let ((overlay
          (or (cl-find 'process-history-log-overlay
                       (overlays-in (point-min) (point-max))
