@@ -124,7 +124,7 @@ See `time-stamp-format'."
 (defcustom process-history-format-alist
   `(("Command" . --item-command)
     ("Directory" . ,(lambda (item)
-                      (propertize (--item-directory item)
+                      (propertize (directory-file-name (--item-directory item))
                                   'face 'process-history-directory-face)))
     ("Start" . ,(apply-partially '--time-format-slot 'start-time))
     ("Code" . ,(lambda (item)
