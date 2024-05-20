@@ -123,9 +123,6 @@ See `time-stamp-format'."
 
 (defcustom process-history-format-alist
   `(("Command" . --item-command)
-    ("Start" . ,(lambda (item)
-                  (propertize (--format-time (--item-start-time item))
-                              'face 'process-history-time-face)))
     ("RC" . ,(lambda (item)
                  (if-let ((code (--item-exit-code item)))
                      (propertize
@@ -138,7 +135,10 @@ See `time-stamp-format'."
                        ((equal (--item-exit-code item) 0)
                         'process-history-success-face)
                        (t 'process-history-error-face)))
-                   "*")))
+                   "--")))
+    ("Start" . ,(lambda (item)
+                  (propertize (--format-time (--item-start-time item))
+                              'face 'process-history-time-face)))
     ("Time" . ,(lambda (item)
                  (propertize
                   (--relative-time
@@ -147,15 +147,19 @@ See `time-stamp-format'."
                   'face 'process-history-time-face)))
     ("Directory" . ,(lambda (item)
                       (propertize
-                       (string-truncate-left
-                        (directory-file-name (--item-directory item))
-                        30)
+                       (directory-file-name (--item-directory item))
                        'face 'process-history-directory-face)))
     ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
                                         'face 'process-history-vc-face)))
+    ("Buffer" . ,(lambda (item)
+                   (let ((process (--item-process item)))
+                     (if (process-live-p process)
+                         (format "%s" (process-buffer process))
+                       "--"))))
     ("PID" . ,(lambda (item)
-                (ignore-errors
-                  (format "%s" (process-id (--item-process item)))))))
+                (or (ignore-errors
+                      (format "%s" (process-id (--item-process item))))
+                    "--"))))
   "Log item format alist.
 Alist of (NAME . FN) pairs.  Where FN takes `process-history--item' should
 return string."
@@ -163,12 +167,13 @@ return string."
 
 (defcustom process-history-list-format
   (vector '("Command" 80 t)
-          '("Start" 13 t :right-align t)
           '("RC" 4 t :right-align t)
+          '("Start" 13 t :right-align t)
           '("Time" 8 t :right-align t)
-	  '("Directory" 30 t :right-align t)
-          '("VC" 8 t :right-align t)
-          '("PID" 8 t :right-align t))
+	  '("Directory" 35 t :right-align t)
+          '("VC" 8 t)
+          '("Buffer" 25 t)
+          '("PID" 8 t))
   "See `tabulated-list-format'.
 Each NAME needs to exist in `process-history-format-alist' to be
 displayed correctly."
@@ -183,11 +188,11 @@ See `process-history-completing-read'."
 
 ;;; Faces
 (defface process-history-directory-face
-  '((t :inherit normal))
+  '((t :inherit dired-directory))
   "Face used in Directory column.")
 
 (defface process-history-time-face
-  '((t :inherit diary-time))
+  '((t :inherit font-lock-doc-face))
   "Face used to highlight time.")
 
 (defface process-history-success-face
