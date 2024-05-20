@@ -76,6 +76,15 @@ Completes from collection based on `process-history'."
                           (when (equal root (process-history--item-directory item))
                             (list str)))
                         alist))
+             ,@base-source)
+            (:name ,(format "Directory (%s)" default-directory)
+             :narrow ?d
+             :hidden t
+             :items
+             ,(mapcan (pcase-lambda (`(,str . ,item))
+                        (when (equal default-directory (process-history--item-directory item))
+                          (list str)))
+                      alist)
              ,@base-source)))
          (match
           (car (consult--multi sources
