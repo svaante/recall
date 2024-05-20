@@ -77,15 +77,16 @@ Completes from collection based on `process-history'."
                             (list str)))
                         alist))
              ,@base-source)
-            (:name ,(format "Directory (%s)" default-directory)
-             :narrow ?d
-             :hidden t
-             :items
-             ,(mapcan (pcase-lambda (`(,str . ,item))
-                        (when (equal default-directory (process-history--item-directory item))
-                          (list str)))
-                      alist)
-             ,@base-source)))
+            ,(let ((directory (abbreviate-file-name default-directory)))
+               `(:name ,(format "Directory (%s)" directory)
+                 :narrow ?d
+                 :hidden t
+                 :items
+                 ,(mapcan (pcase-lambda (`(,str . ,item))
+                            (when (equal directory (process-history--item-directory item))
+                              (list str)))
+                          alist)
+             ,@base-source))))
          (match
           (car (consult--multi sources
                                :prompt prompt
