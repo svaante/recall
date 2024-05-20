@@ -672,8 +672,7 @@ for pruning options."
   (when (or (not (called-interactively-p 'all))
             (yes-or-no-p "Are you sure you want to delete history item?"))
     (delete-file (--log-file history-item))
-    (setq process-history (delq history-item process-history))
-    (revert-buffer)))
+    (setq process-history (delq history-item process-history))))
 
 
 ;;; Advice
