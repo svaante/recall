@@ -643,11 +643,12 @@ for pruning options."
   "Rerun command from HISTORY-ITEM."
   (interactive (--interactive "Rerun command: "))
   (let ((default-directory (--item-directory history-item))
+        (command (--item-command history-item))
         (--condition (--item-condition history-item)))
-    (funcall (cdr
-              (or (assoc --condition process-history-rerun-alist)
-                  (assoc nil process-history-rerun-alist)))
-             (--item-command history-item))))
+    (funcall (cdr (or (assoc --condition process-history-rerun-alist)
+                      (assoc nil process-history-rerun-alist)))
+             command)
+    (message "Running %S" command))))
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
