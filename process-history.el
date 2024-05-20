@@ -701,4 +701,5 @@ for pruning options."
 
 ;; Local Variables:
 ;; read-symbol-shorthands: (("--" . "process-history--"))
+;; checkdoc-force-docstrings-flag: nil
 ;; End:
