@@ -441,12 +441,8 @@ If ITEMS is non nil display all items."
       (setq process-history-local items)
       (revert-buffer)
       (goto-char (point-min)))
-    (select-window
-     (display-buffer buffer
-                     '((display-buffer-reuse-mode-window display-buffer-at-bottom)
-                       (window-height . 0.3)
-                       (dedicated . t)
-                       (preserve-size . (t . t)))))))
+    (pop-to-buffer buffer)))
+
 
 ;;; Logs
 (defvar --log-filter-functions nil)
