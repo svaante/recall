@@ -648,7 +648,7 @@ for pruning options."
     (funcall (cdr (or (assoc --condition process-history-rerun-alist)
                       (assoc nil process-history-rerun-alist)))
              command)
-    (message "Running %S" command))))
+    (message "Running %S" command)))
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
