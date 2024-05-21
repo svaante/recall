@@ -497,6 +497,15 @@ If ITEMS is non nil display all items."
 (add-hook '--log-filter-functions #'--log-asni-color-filter)
 
 
+;;; Bookmarks
+
+(defun --bookmark-restore (bookmark)
+  (process-history-rerun (alist-get 'item bookmark)))
+
+(put '--bookmark-restore 'bookmark-handler-type
+     "Process")
+
+
 ;;; Complete
 (defun --collection ()
   (let ((command-count (make-hash-table :test 'equal))
@@ -645,6 +654,19 @@ for pruning options."
                       (assoc nil process-history-rerun-alist)))
              command)
     (message "Running %S" command)))
+
+(defun process-history-bookmark (history-item)
+  "Bookmark HISTORY-ITEM."
+  (interactive (--interactive "Add bookmark: "))
+  (require 'bookmark)
+  (let ((item-copy (append history-item nil)))
+    (setf (--item-process item-copy) nil)
+    (bookmark-store (read-string (format "Name bookmark for command %S in %S: "
+                                         (--item-command history-item)
+                                         (--item-directory history-item)))
+                    `((handler . --bookmark-restore)
+                      (item . ,item-copy))
+                    t)))
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
