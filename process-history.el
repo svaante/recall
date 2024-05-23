@@ -288,7 +288,8 @@ See `process-history-completing-read'."
            (run-with-timer
             0 nil (lambda (buffer)
                     (with-current-buffer buffer (revert-buffer)))
-            (current-buffer))
+            (current-buffer)
+            (forward-line))
            (tabulated-list-get-id))
           (_ (funcall process-history-completing-read-fn prompt predicate)))))
 
