@@ -48,8 +48,16 @@ Completes from collection based on `process-history'."
   (let* ((alist
           (seq-filter (or predicate 'identity)
                       (process-history--collection)))
+         (annotate-fn
+          (process-history--make-annotation-function alist))
          (base-source
-          `(:annotate ,(process-history--make-annotation-function alist)
+          `(:annotate ,(lambda (&rest args)
+                         ;; HACK Don't let consult align the
+                         ;; annotations as one long command might ruin
+                         ;; the annotations for all the rest of the
+                         ;; candidates.
+                         (setq-local consult--annotate-align-width 0)
+                         (apply annotate-fn args))
             :category process-history))
          (sources
           `((:name "Active"
