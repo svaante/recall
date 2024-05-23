@@ -149,8 +149,10 @@ See `time-stamp-format'."
                       (propertize
                        (directory-file-name (--item-directory item))
                        'face 'process-history-directory-face)))
-    ("VC" . ,(lambda (item) (propertize (or (--item-vc item) "")
-                                        'face 'process-history-vc-face)))
+    ("VC" . ,(lambda (item)
+               (if-let ((vc (--item-vc item)))
+                   (propertize vc 'face 'process-history-vc-face)
+                 "--")))
     ("Buffer" . ,(lambda (item)
                    (let ((process (--item-process item)))
                      (if (process-live-p process)
