@@ -93,7 +93,7 @@ Where condition is either an item in `process-history-buffer-match',
 `process-history-this-command' or nil for anything else."
   :type 'alist)
 
-(defcustom process-history-prune-after (* 60 24 7 3)
+(defcustom process-history-prune-after (* 60 60 24 7 2) ;; two weeks
   "Prune history after seconds on `process-history-save'."
   :type '(choice (natnum :tag "Prune history item after seconds.")
                  (const :tag "Never prune." nil)))
