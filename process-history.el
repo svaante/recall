@@ -267,9 +267,9 @@ See `process-history-completing-read'."
                  for item in process-history
                  for directory = (--item-directory item)
                  for command = (--item-command item)
-                 ;; An history item is not unique if another item
-                 ;; shares command and directory.
-                 for key = (cons command directory)
+                 ;; An history item is unique if another item
+                 ;; shares command string.
+                 for key = command
                  for unique-command-p = (not (gethash key command-set))
                  do (puthash key t command-set)
                  if (or (not process-history-prune-after)
