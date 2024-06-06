@@ -521,13 +521,11 @@ If ITEMS is non nil display all items."
              for command = (--item-command item)
              for count = (puthash command (1- (gethash command command-count))
                                   command-count)
-             collect (cons
-                      (concat (propertize command
-                                          'unique (gethash command command-unique-p)
-                                          'count count)
-                              (propertize (format "%s" count)
-                                          'invisible t))
-                      item))))
+             collect (cons (concat command
+                                   (unless (gethash command command-unique-p)
+                                     (propertize (format "<%d>" count)
+                                                 'face 'shadow)))
+                           item))))
 
 (defun --make-affixation (alist)
   (pcase-let* ((`(_ ,cols)
@@ -543,12 +541,7 @@ If ITEMS is non nil display all items."
             (setq-local process-history (list item)))
           (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
           (revert-buffer)
-           (list (concat
-                 (truncate-string-to-width candidate cols nil nil t)
-                 (unless (get-text-property 0 'unique candidate)
-                   (propertize
-                    (format "<%d>" (get-text-property 0 'count candidate))
-                    'face 'shadow)))
+           (list (truncate-string-to-width candidate cols nil nil t)
                 ""
                 (string-trim-right (buffer-string))))))))
 
