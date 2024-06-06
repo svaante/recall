@@ -61,7 +61,10 @@ Completes from collection based on `process-history'."
                     prefix suffix))))
          ;; HACK Let embark know that the real string needs to be
          ;;      extracted from text property 'multi-category.
-         (embark-transformer-alist '((hack-multi-category . embark--refine-multi-category)))
+         (embark-transformer-alist
+          (when (boundp 'embark-transformer-alist)
+            (append embark-transformer-alist
+                    '((hack-multi-category . embark--refine-multi-category)))))
          (sources
           `((:name "Active"
                    :narrow ?a
