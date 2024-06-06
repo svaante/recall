@@ -393,20 +393,16 @@ See `process-history-completing-read'."
 (defvar-local process-history-local nil)
 
 (defun --list-refresh ()
-  ;; TODO Should be able to filter by column value
   (setq tabulated-list-entries
         (cl-loop
          for item in (or process-history-local
                          process-history)
-         collect
-         (list
-          item
-          (cl-map 'vector
-                  (lambda (col)
-                    (or (funcall (cdr (assoc col process-history-format-alist))
-                                 item)
-                        ""))
-                  (cl-mapcar 'car tabulated-list-format))))))
+         for desc =
+         (cl-loop for (col) across tabulated-list-format
+                  for fn = (cdr (assoc col process-history-format-alist))
+            collect (or (funcall fn item) "") into desc
+            finally return (apply 'vector desc))
+         collect (list item desc))))
 
 (defvar-keymap process-history-list-mode-map
   :doc "Local keymap for `process-history-list-mode' buffers."
@@ -525,25 +521,34 @@ If ITEMS is non nil display all items."
              for command = (--item-command item)
              for count = (puthash command (1- (gethash command command-count))
                                   command-count)
-             collect (cons (concat command
-                                   (unless (gethash command command-unique-p)
-                                     (propertize (format "<%d>" count)
-                                                 'face 'shadow)))
-                           item))))
+             collect (cons
+                      (propertize command
+                                  'unique (gethash command command-unique-p)
+                                  'count  count)
+                      item))))
 
-(defun --make-annotation-function (alist)
-  (lambda (string)
-    (let ((item (cdr (assoc string alist 'string-equal))))
-      ;; HACK Use `tabulated-list-mode' to create annotation
-      (with-temp-buffer
-        (tabulated-list-mode)
-        (setq tabulated-list-format process-history-list-format)
-        (let ((item (copy-tree item)))
-          (setf (--item-command item) "")
-          (setq-local process-history (list item)))
-        (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
-        (revert-buffer)
-        (string-trim-right (buffer-string))))))
+(defun --make-affixation (alist)
+  (pcase-let* ((`(_ ,cols)
+                (assoc "Command" (append process-history-list-format nil))))
+    (lambda (candidate)
+      (let ((item (cdr (assoc candidate alist 'string-equal))))
+        ;; HACK Use `tabulated-list-mode' to create annotation
+        (with-temp-buffer
+          (tabulated-list-mode)
+          (setq tabulated-list-format process-history-list-format)
+          (let ((item (copy-tree item)))
+            (setf (--item-command item) "")
+            (setq-local process-history (list item)))
+          (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
+          (revert-buffer)
+           (list (concat
+                 (truncate-string-to-width candidate cols nil nil t)
+                 (unless (get-text-property 0 'unique candidate)
+                   (propertize
+                    (format "<%d>" (get-text-property 0 'count candidate))
+                    'face 'shadow)))
+                ""
+                (string-trim-right (buffer-string))))))))
 
 (defun process-history-completing-read (prompt &optional predicate)
   "Read a string in the minibuffer, with completion.
@@ -559,15 +564,15 @@ Completes from collection based on `process-history'."
              ((eq action 'metadata)
               `(metadata
                 (category . process-history)
-                (annotation-function . ,(--make-annotation-function alist))
+                (affixation-function . ,(apply-partially 'mapcar (--make-affixation alist)))
                 (display-sort-function . identity)))
              (t
               (complete-with-action action alist string predicate)))))
-         ;; Properties are added in `--collection'
-         ;; Therefore we need to get back test properties to equality
+         ;; Properties are added in `--collection'.
+         ;; Therefore we need the properties intact to get `equal' to
+         ;; match in `assoc'.
          (minibuffer-allow-text-properties t))
-    (alist-get (completing-read prompt collection predicate t) alist
-               nil nil 'equal)))
+    (cdr (assoc (completing-read prompt collection predicate t) alist))))
 
 
 ;;; Commands
