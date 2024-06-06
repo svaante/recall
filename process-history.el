@@ -522,9 +522,11 @@ If ITEMS is non nil display all items."
              for count = (puthash command (1- (gethash command command-count))
                                   command-count)
              collect (cons
-                      (propertize command
-                                  'unique (gethash command command-unique-p)
-                                  'count  count)
+                      (concat (propertize command
+                                          'unique (gethash command command-unique-p)
+                                          'count count)
+                              (propertize (format "%c" count)
+                                          'invisible t))
                       item))))
 
 (defun --make-affixation (alist)
