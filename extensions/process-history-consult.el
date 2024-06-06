@@ -38,6 +38,12 @@
 (require 'process-history)
 (require 'consult)
 
+;; HACK Let embark know that the real string needs to be
+;;      extracted from text property 'multi-category.
+(when (boundp 'embark-transformer-alist)
+  (add-to-list 'embark-transformer-alist
+               '(process-history-hack-multi-category . embark--refine-multi-category)))
+
 (defun process-history-consult-completing-read (prompt &optional predicate)
   "Read a string in the minibuffer, with completion.
 PROMPT is a string to prompt with; normally it ends in a colon and a
@@ -59,12 +65,6 @@ Completes from collection based on `process-history'."
                          (`(,candidate ,prefix ,suffix) (funcall annotate-fn-1 string)))
               (list (consult--tofu-append candidate (consult--tofu-get cand))
                     prefix suffix))))
-         ;; HACK Let embark know that the real string needs to be
-         ;;      extracted from text property 'multi-category.
-         (embark-transformer-alist
-          (when (boundp 'embark-transformer-alist)
-            (append embark-transformer-alist
-                    '((hack-multi-category . embark--refine-multi-category)))))
          (sources
           `((:name "Active"
                    :narrow ?a
@@ -103,7 +103,7 @@ Completes from collection based on `process-history'."
                       :prompt prompt
                       ;; HACK Same issue different package.
                       ;;      See `marginalia-annotate-multi-category'.
-                      :category 'hack-multi-category
+                      :category 'process-history-hack-multi-category
                       :annotate annotate-fn
                       :require-match t
                       :sort nil))))
