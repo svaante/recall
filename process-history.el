@@ -525,7 +525,7 @@ If ITEMS is non nil display all items."
                       (concat (propertize command
                                           'unique (gethash command command-unique-p)
                                           'count count)
-                              (propertize (format "%c" count)
+                              (propertize (format "%s" count)
                                           'invisible t))
                       item))))
 
