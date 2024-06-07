@@ -124,18 +124,18 @@ See `time-stamp-format'."
 (defcustom process-history-format-alist
   `(("Command" . --item-command)
     ("RC" . ,(lambda (item)
-                 (if-let ((code (--item-exit-code item)))
-                     (propertize
-                      (format "%s" code)
-                      'face
-                      (cond
-                       ((and-let* ((process (--item-process item)))
-                          (process-live-p process))
-                        'default)
-                       ((equal (--item-exit-code item) 0)
-                        'process-history-success-face)
-                       (t 'process-history-error-face)))
-                   "--")))
+               (if-let ((code (--item-exit-code item)))
+                   (propertize
+                    (format "%s" code)
+                    'face
+                    (cond
+                     ((and-let* ((process (--item-process item)))
+                        (process-live-p process))
+                      'default)
+                     ((equal (--item-exit-code item) 0)
+                      'process-history-success-face)
+                     (t 'process-history-error-face)))
+                 "--")))
     ("Start" . ,(lambda (item)
                   (propertize (--format-time (--item-start-time item))
                               'face 'process-history-time-face)))
@@ -273,8 +273,8 @@ See `process-history-completing-read'."
                  do (puthash key t command-set)
                  if (or (not process-history-prune-after)
                         (< (- (time-to-seconds)
-                                (time-to-seconds
-                                 (--item-start-time item)))
+                              (time-to-seconds
+                               (--item-start-time item)))
                            process-history-prune-after)
                         (and process-history-prune-keep-unique
                              unique-command-p))
@@ -401,8 +401,8 @@ See `process-history-completing-read'."
          for desc =
          (cl-loop for (col) across tabulated-list-format
                   for fn = (cdr (assoc col process-history-format-alist))
-            collect (or (funcall fn item) "") into desc
-            finally return (apply 'vector desc))
+                  collect (or (funcall fn item) "") into desc
+                  finally return (apply 'vector desc))
          collect (list item desc))))
 
 (defvar-keymap process-history-list-mode-map
