@@ -265,7 +265,6 @@ See `process-history-completing-read'."
   (setq process-history
         (cl-loop with command-set = (make-hash-table :test 'equal)
                  for item in process-history
-                 for directory = (--item-directory item)
                  for command = (--item-command item)
                  ;; An history item is unique if another item
                  ;; shares command string.
