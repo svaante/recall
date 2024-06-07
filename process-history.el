@@ -122,46 +122,43 @@ See `time-stamp-format'."
   :type 'string)
 
 (defcustom process-history-format-alist
-  `(("Command" . --item-command)
-    ("RC" . ,(lambda (item)
-               (if-let ((code (--item-exit-code item)))
-                   (propertize
-                    (format "%s" code)
-                    'face
-                    (cond
-                     ((and-let* ((process (--item-process item)))
-                        (process-live-p process))
-                      'default)
-                     ((equal (--item-exit-code item) 0)
-                      'process-history-success-face)
-                     (t 'process-history-error-face)))
-                 "--")))
-    ("Start" . ,(lambda (item)
-                  (propertize (--format-time (--item-start-time item))
-                              'face 'process-history-time-face)))
-    ("Time" . ,(lambda (item)
-                 (propertize
-                  (--relative-time
-                   (- (time-to-seconds (--item-end-time item))
-                      (time-to-seconds (--item-start-time item))))
-                  'face 'process-history-time-face)))
-    ("Directory" . ,(lambda (item)
-                      (propertize
-                       (directory-file-name (--item-directory item))
-                       'face 'process-history-directory-face)))
-    ("VC" . ,(lambda (item)
-               (if-let ((vc (--item-vc item)))
-                   (propertize vc 'face 'process-history-vc-face)
-                 "--")))
-    ("Buffer" . ,(lambda (item)
-                   (let ((process (--item-process item)))
-                     (if (process-live-p process)
-                         (format "%s" (process-buffer process))
-                       "--"))))
-    ("PID" . ,(lambda (item)
-                (or (ignore-errors
-                      (format "%s" (process-id (--item-process item))))
-                    "--"))))
+  '(("Command" . --item-command)
+    ("RC" .
+     (lambda (item)
+       (when-let ((code (--item-exit-code item)))
+         (propertize
+          (format "%s" code) 'face
+          (cond
+           ((and-let* ((process (--item-process item)))
+              (process-live-p process))
+            'default)
+           ((equal (--item-exit-code item) 0)
+            'process-history-success-face)
+           (t 'process-history-error-face))))))
+    ("Start" .
+     (lambda (item)
+       (propertize (--format-time (--item-start-time item))
+                   'face 'process-history-time-face)))
+    ("Time" . (lambda (item)
+                (propertize
+                 (--relative-time
+                  (- (time-to-seconds (--item-end-time item))
+                     (time-to-seconds (--item-start-time item))))
+                 'face 'process-history-time-face)))
+    ("Directory" . (lambda (item)
+                     (propertize
+                      (directory-file-name (--item-directory item))
+                      'face 'process-history-directory-face)))
+    ("VC" . (lambda (item)
+              (when-let ((vc (--item-vc item)))
+                (propertize vc 'face 'process-history-vc-face))))
+    ("Buffer" . (lambda (item)
+                  (let ((process (--item-process item)))
+                    (when (process-live-p process)
+                      (format "%s" (process-buffer process))))))
+    ("PID" . (lambda (item)
+               (ignore-errors
+                 (format "%s" (process-id (--item-process item)))))))
   "Log item format alist.
 Alist of (NAME . FN) pairs.  Where FN takes `process-history--item' should
 return string."
