@@ -395,15 +395,14 @@ See `process-history-completing-read'."
 
 (defun --list-refresh ()
   (setq tabulated-list-entries
-        (cl-loop
-         for item in (or process-history-local
-                         process-history)
-         for desc =
-         (cl-loop for (col) across tabulated-list-format
-                  for fn = (cdr (assoc col process-history-format-alist))
-                  collect (or (funcall fn item) "") into desc
-                  finally return (apply 'vector desc))
-         collect (list item desc))))
+        (cl-loop for item in (or process-history-local
+                                 process-history)
+                 for desc =
+                 (cl-loop for (col) across tabulated-list-format
+                          for fn = (cdr (assoc col process-history-format-alist))
+                          collect (or (funcall fn item) "--") into desc
+                          finally return (apply 'vector desc))
+                 collect (list item desc))))
 
 (defvar-keymap process-history-list-mode-map
   :doc "Local keymap for `process-history-list-mode' buffers."
@@ -470,20 +469,19 @@ If ITEMS is non nil display all items."
              (make-overlay (point-min) (point-min)))))
     (overlay-put overlay 'category 'process-history-log-overlay)
     (overlay-put overlay 'before-string
-                 (concat
-                  (propertize
-                   (cl-loop
-                    with max-length =
-                    (apply 'max (mapcar (lambda (x)
-                                          (length (car x)))
-                                        process-history-format-alist))
-                    for (name . accessor) in process-history-format-alist
-                    for value = (funcall accessor --log-item)
-                    when value
-                    concat (format (format "%%%ds: %%s\n" max-length)
-                                   name value))
-                   'face 'process-history-log-overlay-face)
-                  "\n")))
+                 (cl-loop
+                  with max-length =
+                  (apply 'max (mapcar (lambda (x) (length (car x)))
+                                      process-history-format-alist))
+                  for (name . accessor) in process-history-format-alist
+                  for value = (funcall accessor --log-item)
+                  when value concat
+                  (format (format "%%%ds: %%s\n" max-length) name value)
+                  into before-string
+                  finally return
+                  (concat (propertize before-string
+                                      'face 'process-history-log-overlay-face)
+                          "\n"))))
   (setq buffer-file-name nil
         default-directory (--item-directory --log-item))
   (rename-buffer (format "*Log %S*" (--item-command --log-item)) t)
