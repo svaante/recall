@@ -38,12 +38,6 @@
 (require 'process-history)
 (require 'consult)
 
-;; HACK Let embark know that the real string needs to be
-;;      extracted from text property 'multi-category.
-(when (boundp 'embark-transformer-alist)
-  (add-to-list 'embark-transformer-alist
-               '(process-history-hack-multi-category . embark--refine-multi-category)))
-
 (defun process-history-consult-completing-read (prompt &optional predicate)
   "Read a string in the minibuffer, with completion.
 PROMPT is a string to prompt with; normally it ends in a colon and a
@@ -55,16 +49,10 @@ Completes from collection based on `process-history'."
           (seq-filter (or predicate 'identity)
                       (process-history--collection)))
          (annotate-fn-1
-          (process-history--make-affixation alist))
-         (annotate-fn
-          ;; HACK Make consult--multi work with `affixation-function'
-          ;;      we have to pop tofu stuff before calling affixiation
-          ;;      like function then pop it back on.
-          (lambda (cand)
-            (pcase-let* ((string (cdr (get-text-property 0 'multi-category cand)))
-                         (`(,candidate ,prefix ,suffix) (funcall annotate-fn-1 string)))
-              (list (consult--tofu-append candidate (consult--tofu-get cand))
-                    prefix suffix))))
+          (process-history--make-annotation alist))
+         (annotate-fn (lambda (cand)
+                        (setq consult--annotate-align-width 0)
+                        (funcall annotate-fn-1 cand)))
          (sources
           `((:name "Active"
                    :narrow ?a
@@ -98,16 +86,18 @@ Completes from collection based on `process-history'."
                                     (list str)))
                                 alist)))))
          (match (car (consult--multi
-                      (cl-loop for source in sources
-                               collect (append source `(:category process-history)))
+                      (cl-loop for source in sources collect
+                               (append source
+                                       (list
+                                        :category 'process-history
+                                        :annotate annotate-fn)))
                       :prompt prompt
-                      ;; HACK Same issue different package.
-                      ;;      See `marginalia-annotate-multi-category'.
-                      :category 'process-history-hack-multi-category
-                      :annotate annotate-fn
                       :require-match t
                       :sort nil))))
     (alist-get match alist nil nil 'equal)))
+
+(setq process-history-completing-read-fn
+      #'process-history-consult-completing-read)
 
 (provide 'process-history-consult)
 ;;; process-history-consult.el ends here

@@ -168,7 +168,7 @@ return string."
   :type 'alist)
 
 (defcustom process-history-list-format
-  (vector '("Command" 80 t)
+  (vector '("Command" 90 t)
           '("RC" 4 t :right-align t)
           '("Start" 13 t :right-align t)
           '("Time" 8 t :right-align t)
@@ -527,23 +527,19 @@ If ITEMS is non nil display all items."
                                                  'face 'shadow)))
                            item))))
 
-(defun --make-affixation (alist)
-  (pcase-let* ((`(_ ,cols)
-                (assoc "Command" (append process-history-list-format nil))))
-    (lambda (candidate)
-      (let ((item (cdr (assoc candidate alist 'string-equal))))
-        ;; HACK Use `tabulated-list-mode' to create annotation
-        (with-temp-buffer
-          (tabulated-list-mode)
-          (setq tabulated-list-format process-history-list-format)
-          (let ((item (copy-tree item)))
-            (setf (--item-command item) "")
-            (setq-local process-history (list item)))
-          (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
-          (revert-buffer)
-           (list (truncate-string-to-width candidate cols nil nil t)
-                ""
-                (string-trim-right (buffer-string))))))))
+(defun --make-annotation (alist)
+  (lambda (candidate)
+    (let ((item (cdr (assoc candidate alist 'string-equal))))
+      ;; HACK Use `tabulated-list-mode' to create annotation
+      (with-temp-buffer
+        (tabulated-list-mode)
+        (setq tabulated-list-format process-history-list-format)
+        (let ((item (copy-tree item)))
+          (setf (--item-command item) "")
+          (setq-local process-history (list item)))
+        (add-hook 'tabulated-list-revert-hook '--list-refresh nil t)
+        (revert-buffer)
+        (string-trim-right (buffer-string))))))
 
 (defun process-history-completing-read (prompt &optional predicate)
   "Read a string in the minibuffer, with completion.
@@ -559,7 +555,7 @@ Completes from collection based on `process-history'."
              ((eq action 'metadata)
               `(metadata
                 (category . process-history)
-                (affixation-function . ,(apply-partially 'mapcar (--make-affixation alist)))
+                (annotation-function . ,(--make-annotation alist))
                 (display-sort-function . identity)))
              (t
               (complete-with-action action alist string predicate)))))
