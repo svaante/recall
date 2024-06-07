@@ -621,7 +621,7 @@ for pruning options."
    (list (funcall process-history-completing-read-fn "View process buffer: ")))
   (let ((process (--item-process history-item)) buffer)
     (unless (processp process)
-      (user-error "No process associated with HISTORY-ITEM"))
+      (user-error "No process associated with `history-item'"))
     (setq buffer (process-buffer process))
     (unless (and (bufferp buffer) (buffer-live-p buffer))
       (user-error "Buffer killed"))
