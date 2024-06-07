@@ -282,18 +282,19 @@ See `process-history-completing-read'."
                  else
                  do (delete-file (--log-file item)))))
 
-(defun --interactive (prompt &optional predicate)
-  (list (pcase major-mode
-          ('process-history-list-mode
-           ;; HACK Revert buffer after command
-           (run-with-timer
-            0 nil (lambda (buffer)
-                    (with-current-buffer buffer
-                      (revert-buffer)
-                      (forward-line)))
-            (current-buffer))
-           (tabulated-list-get-id))
-          (_ (funcall process-history-completing-read-fn prompt predicate)))))
+(defmacro --def-do-command (name command doc)
+  (declare (indent 2))
+  `(defun ,name ()
+     ,doc
+     (interactive)
+     (let ((item (tabulated-list-get-id))
+           (buffer (current-buffer)))
+       (,command item)
+       (accept-process-output (--item-process item) 0.2)
+       (with-current-buffer buffer
+         (when (eq major-mode 'process-history-list-mode)
+           (revert-buffer nil nil t)
+           (forward-line))))))
 
 
 ;;; Latch on `make-process'
@@ -389,6 +390,7 @@ See `process-history-completing-read'."
 
 
 ;;; List
+
 (defvar-local process-history-local nil)
 
 (defun --list-refresh ()
@@ -406,13 +408,13 @@ See `process-history-completing-read'."
 (defvar-keymap process-history-list-mode-map
   :doc "Local keymap for `process-history-list-mode' buffers."
   :parent tabulated-list-mode-map
-  "C-m"           #'process-history-find-log
-  "D"             #'process-history-process-kill
-  "r"             #'process-history-rerun
-  "o"             #'process-history-buffer
-  "w"             #'process-history-copy-as-kill-command
-  "d"             #'process-history-delete-item
-  "<mouse-2>"     #'process-history-find-log
+  "C-m"           #'process-history-do-find-log
+  "D"             #'process-history-do-process-kill
+  "r"             #'process-history-do-rerun
+  "o"             #'process-history-do-buffer
+  "w"             #'process-history-do-copy-as-kill-command
+  "d"             #'process-history-do-delete-item
+  "<mouse-2>"     #'process-history-do-find-log
   "<follow-link>" 'mouse-face)
 
 (defvar process-history-list-mode nil)
@@ -426,8 +428,6 @@ See `process-history-completing-read'."
         tabulated-list-format process-history-list-format)
   (tabulated-list-init-header)
   (add-hook 'tabulated-list-revert-hook '--list-refresh nil t))
-
-(add-hook 'process-history-list-mode-hook 'auto-revert-mode)
 
 ;;;###autoload
 (defun process-history-list (&optional items)
@@ -606,7 +606,8 @@ for pruning options."
 
 (defun process-history-find-log (history-item)
   "View log for HISTORY-ITEM."
-  (interactive (--interactive "View log: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "View log: ")))
   (if-let ((buffer
             (cl-find history-item
                      (buffer-list)
@@ -616,9 +617,13 @@ for pruning options."
     (find-file (--log-file history-item))
     (process-history-log-mode)))
 
+(--def-do-command process-history-do-find-log process-history-find-log
+  "View log for this item.")
+
 (defun process-history-buffer (history-item)
   "View buffer for HISTORY-ITEM."
-  (interactive (--interactive "View process buffer: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "View process buffer: ")))
   (let ((process (--item-process history-item)) buffer)
     (unless (processp process)
       (user-error "No process associated with HISTORY-ITEM"))
@@ -635,17 +640,25 @@ for pruning options."
      do (user-error "Other process %s using buffer" other-process))
     (pop-to-buffer buffer)))
 
+(--def-do-command process-history-do-buffer process-history-buffer
+  "View buffer for this item.")
+
 (defun process-history-find-dwim (history-item)
   "View buffer or log associated with HISTORY-ITEM."
-  (interactive (--interactive "View log or buffer: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "View log or buffer: ")))
   (let ((process (--item-process history-item)))
     (if (and (processp process) (process-live-p process))
         (process-history-buffer history-item)
       (process-history-find-log history-item))))
 
+(--def-do-command process-history-do-dwim process-history-dwim
+  "Dwim for this item.")
+
 (defun process-history-rerun (history-item)
   "Rerun command from HISTORY-ITEM."
-  (interactive (--interactive "Rerun command: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "Rerun command: ")))
   (let ((default-directory (--item-directory history-item))
         (command (--item-command history-item))
         (--condition (--item-condition history-item)))
@@ -654,9 +667,13 @@ for pruning options."
              command)
     (message "Running %S" command)))
 
+(--def-do-command process-history-do-rerun process-history-rerun
+  "Rerun command of this item.")
+
 (defun process-history-bookmark (history-item)
   "Bookmark HISTORY-ITEM."
-  (interactive (--interactive "Add bookmark: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "Add bookmark: ")))
   (require 'bookmark)
   (let ((item-copy (append history-item nil)))
     (setf (--item-process item-copy) nil)
@@ -670,26 +687,39 @@ for pruning options."
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
   (interactive
-   (--interactive "Kill process: "
+   (list (funcall process-history-completing-read-fn "Kill process: "
                   (pcase-lambda (`(_ . ,item))
-                    (ignore-errors (process-live-p (--item-process item))))))
+                    (ignore-errors (process-live-p (--item-process item)))))))
   (let ((process (--item-process history-item)))
     (unless process
       (user-error "Current history item does not have an live process."))
     (kill-process process)))
 
+(--def-do-command process-history-do-process-kill process-history-process-kill
+  "Kill process of this item.")
+
 (defun process-history-copy-as-kill-command (history-item)
   "Copy command of HISTORY-ITEM."
-  (interactive (--interactive "Copy command: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "Copy command: ")))
   (kill-new (--item-command history-item)))
+
+(--def-do-command process-history-do-copy-as-kill-command
+    process-history-copy-as-kill-command
+  "Copy as kill the command of this item.")
 
 (defun process-history-delete-item (history-item)
   "Delete HISTORY-ITEM."
-  (interactive (--interactive "Delete history: "))
+  (interactive
+   (list (funcall process-history-completing-read-fn "Delete history: ")))
   (when (or (not (called-interactively-p 'all))
             (yes-or-no-p "Are you sure you want to delete history item?"))
     (delete-file (--log-file history-item))
     (setq process-history (delq history-item process-history))))
+
+(--def-do-command process-history-do-delete-item
+    process-history-delete-item
+  "Remove this item from `process-history'.")
 
 
 ;;; Advice
