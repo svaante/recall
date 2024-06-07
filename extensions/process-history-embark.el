@@ -44,7 +44,6 @@
   "k" #'process-history-process-kill
   "r" #'process-history-rerun
   "w" #'process-history-copy-as-kill-command
-  "b" #'process-history-bookmark
   "d" #'process-history-delete-item)
 
 (add-to-list 'embark-keymap-alist
