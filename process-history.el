@@ -497,7 +497,7 @@ If ITEMS is non nil display all items."
   (process-history-rerun (alist-get 'item bookmark)))
 
 (put '--bookmark-restore 'bookmark-handler-type
-     "Process")
+     "Command")
 
 
 ;;; Complete
@@ -671,10 +671,11 @@ for pruning options."
    (list (funcall process-history-completing-read-fn "Add bookmark: ")))
   (require 'bookmark)
   (let ((item-copy (append history-item nil)))
-    (setf (--item-process item-copy) nil)
+    (ignore-errors (setf (--item-process item-copy) nil))
     (bookmark-store (read-string (format "Name bookmark for command %S in %S: "
                                          (--item-command history-item)
-                                         (--item-directory history-item)))
+                                         (--item-directory history-item))
+                                 (--item-command history-item))
                     `((handler . --bookmark-restore)
                       (item . ,item-copy))
                     t)))
