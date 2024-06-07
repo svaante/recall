@@ -51,6 +51,9 @@ Completes from collection based on `process-history'."
          (annotate-fn-1
           (process-history--make-annotation alist))
          (annotate-fn (lambda (cand)
+                        ;; HACK Don't slide annotation of the edge of
+                        ;;      the world just because of one long
+                        ;;      command string.
                         (setq consult--annotate-align-width 0)
                         (funcall annotate-fn-1 cand)))
          (sources
