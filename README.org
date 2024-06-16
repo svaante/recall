@@ -2,13 +2,19 @@
 #+author: Daniel Pettersson
 #+language: en
 
-This package advices =make-process= and friends to store command,
-working directory, stdout, start time, end time, exit code and vc
-revision for all of emacs's sub-processes (you want).
+This package `advice-add's =make-process= and friends to store
+metadata like; working directory, stdout, start time, end time,
+exit code and version control revision for any Emacs sub-processes.
 
-Think =.bash_history= plus plus.
+It defines commands to view and manage both currently running
+processes and historical processes, accessible via the minibuffer
+and a specialized =tabulated-list= buffer.
+
+Joining the functionality of =.bash_history= with =proceed=.
 
 Enable process surveillance with =process-history-mode=.
+
+Integration with consult and embark are found in extensions/*.el
 
 * Configuration
 #+begin_src emacs-lisp

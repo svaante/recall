@@ -27,12 +27,19 @@
 
 ;;; Commentary:
 
-;; This package advices `make-process' and friends to store command,
-;; working directory, stdout, start time, end time, exit code and vc
-;; revision for emacs sub-processes (you want).
-;; Think .bash_history++.
+;; This package `advice-add's `make-process' and friends to store
+;; metadata like; working directory, stdout, start time, end time,
+;; exit code and version control revision for any Emacs sub-processes.
+
+;; It defines commands to view and manage both currently running
+;; processes and historical processes, accessible via the minibuffer
+;; and a specialized `tabulated-list' buffer.
+
+;; Joining the functionality of .bash_history with proceed.
 
 ;; Enable process surveillance with `process-history-mode'.
+
+;; Integration with consult and embark are found in extensions/*.el
 
 ;; Note:
 ;; As this package advices core functionality, usage might have
