@@ -283,15 +283,18 @@ See `process-history-completing-read'."
                         (and process-history-prune-keep-unique
                              unique-command-p))
                  collect item
-                 else
-                 do (delete-file (--log-file item)))))
+                 else do (delete-file (--log-file item)))))
 
 (defmacro --def-do-command (name command doc)
   (declare (indent 2))
   `(defun ,name ()
      ,doc
      (interactive)
-     (let ((item (tabulated-list-get-id))
+     (let ((item (cond
+                  ((derived-mode-p 'process-history-list-mode)
+                   (tabulated-list-get-id))
+                  ((derived-mode-p 'process-history-log-mode)
+                   --log-item)))
            (buffer (current-buffer)))
        (,command item)
        (accept-process-output (--item-process item) 0.2)
@@ -450,6 +453,12 @@ If ITEMS is non nil display all items."
 (defvar --log-filter-functions nil)
 
 (defvar-local --log-item nil)
+
+(defvar-keymap process-history-log-mode-map
+  :doc "Local keymap for `process-history-mode' buffers."
+  "r"             #'process-history-do-rerun
+  "w"             #'process-history-do-copy-as-kill-command
+  "d"             #'process-history-do-delete-item)
 
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
@@ -644,9 +653,6 @@ for pruning options."
     (if (and (processp process) (process-live-p process))
         (process-history-buffer history-item)
       (process-history-find-log history-item))))
-
-(--def-do-command process-history-do-dwim process-history-dwim
-  "Dwim for this item.")
 
 (defun process-history-rerun (history-item)
   "Rerun command from HISTORY-ITEM."
