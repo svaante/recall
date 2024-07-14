@@ -35,7 +35,7 @@
 ;; processes and historical processes, accessible via the minibuffer
 ;; and a specialized `tabulated-list' buffer.
 
-;; Joining the functionality of .bash_history with proceed.
+;; Joining the functionality of .bash_history with proced.
 
 ;; Enable process surveillance with `process-history-mode'.
 

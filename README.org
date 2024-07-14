@@ -7,10 +7,10 @@ metadata like; working directory, stdout, start time, end time,
 exit code and version control revision for any Emacs sub-processes.
 
 It defines commands to view and manage both currently running
-processes and historical processes, accessible via the minibuffer
+processes and exited processes, accessible via the minibuffer
 and a specialized =tabulated-list= buffer.
 
-Joining the functionality of =.bash_history= with =proceed=.
+Joining the functionality of =.bash_history= with =proced=.
 
 Enable process surveillance with =process-history-mode=.
 
