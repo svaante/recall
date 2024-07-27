@@ -19,15 +19,7 @@ Integration with consult and embark are found in extensions/*.el
 * Configuration
 #+begin_src emacs-lisp
   (use-package process-history
-    :straight (process-history
-               :type git :host github
-               :repo "svaante/process-history"
-               :files (:defaults "extensions/*")
-               :includes (;; Consult integration
-                          ;; process-history-consult
-                          ;; Embark integration
-                          ;; process-history-embark
-                          ))
+    :vc (:url "https://github.com/svaante/process-history"
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
     ;; ("C-x C-r" . process-history-list)
@@ -43,11 +35,20 @@ Integration with consult and embark are found in extensions/*.el
     ;; Which buffers to enable process history for (comes with sensible defaults)
     ;; (add-to-list 'process-history-this-command 'dired-shell-command)
 
-    ;; Consult integration
-    ;; (setq process-history-completing-read-fn 'process-history-consult-completing-read)
 
     ;; Enable `make-process' advice
     (process-history-mode))
+
+  ;; Consult integration
+  (use-package process-history-consult
+    :ensure nil
+    :config
+    (setq process-history-completing-read-fn
+  	  'process-history-consult-completing-read))
+
+  ;; Embark integration
+  (use-package process-history-embark
+    :ensure nil)
 #+end_src
 
 * Note
