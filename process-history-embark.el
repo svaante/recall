@@ -40,6 +40,7 @@
 (defvar-keymap embark-process-history-actions-map
   :doc "Process history actions"
   :parent embark-general-map
+  "b" #'process-history-buffer
   "f" #'process-history-find-log
   "k" #'process-history-process-kill
   "r" #'process-history-rerun
