@@ -56,47 +56,46 @@ Completes from collection based on `process-history'."
                         ;;      command string.
                         (setq consult--annotate-align-width 0)
                         (funcall annotate-fn-1 cand)))
+         (directory (abbreviate-file-name default-directory))
          (sources
-          `((:name "Active"
-                   :narrow ?a
-                   :items ,(mapcan (pcase-lambda (`(,str . ,item))
-                                     (unless (process-history--item-exit-code item)
-                                       (list str)))
-                                   alist))
-            (:name "Exited"
-                   :narrow ?e
-                   :items ,(mapcan (pcase-lambda (`(,str . ,item))
-                                     (when (process-history--item-exit-code item)
-                                       (list str)))
-                                   alist))
-            (:name "Project"
-                   :narrow ?p
-                   :hidden t
-                   :items
-                   ,(when-let* ((root (consult--project-root))
-                                (root (abbreviate-file-name root)))
-                      (mapcan (pcase-lambda (`(,str . ,item))
-                                (when (equal root (process-history--item-directory item))
-                                  (list str)))
-                              alist)))
-            ,(let ((directory (abbreviate-file-name default-directory)))
-               `(:name ,(format "Directory (%s)" directory)
-                       :narrow ?d
-                       :hidden t
-                       :items
-                       ,(mapcan (pcase-lambda (`(,str . ,item))
-                                  (when (equal directory (process-history--item-directory item))
-                                    (list str)))
-                                alist)))))
-         (match (car (consult--multi
-                      (cl-loop for source in sources collect
-                               (append source
-                                       (list
-                                        :category 'process-history
-                                        :annotate annotate-fn)))
-                      :prompt prompt
-                      :require-match t
-                      :sort nil))))
+          `((:name "Active" :narrow ?a :items
+                   ,(lambda ()
+                      (cl-loop for (str . item) in alist
+                               unless (process-history--item-exit-code item)
+                               collect str)))
+            (:name "Exited" :narrow ?e :items
+                   ,(lambda ()
+                      (cl-loop for (str . item) in alist
+                               when (process-history--item-exit-code item)
+                               collect str)))
+            (:name "Unique" :narrow ?u :hidden t :items
+                   ,(lambda ()
+                      (cl-loop with table = (make-hash-table :test 'equal)
+                               for (str . item) in alist
+                               for key = (cons (process-history--item-command item)
+                                               (process-history--item-directory item))
+                               unless (gethash key table) collect
+                               str and do (puthash key t table))))
+            (:name "Project" :narrow ?p :hidden t :items
+                   ,(lambda ()
+                      (when-let* ((root (consult--project-root))
+                                  (root (abbreviate-file-name root)))
+                        (cl-loop for (str . item) in alist
+                                 when (equal root (process-history--item-directory item))
+                                 collect str))))
+            (:name ,(format "Directory (%s)" directory) :narrow ?d :hidden t :items
+                   ,(lambda ()
+                      (cl-loop for (str . item) in alist
+                               when (equal directory (process-history--item-directory item))
+                               collect str)))))
+         (sources
+          (cl-loop for source in sources collect
+                   (append source
+                           `(:category process-history :annotate ,annotate-fn))))
+         (match (car (consult--multi sources
+                                     :prompt prompt
+                                     :require-match t
+                                     :sort nil))))
     (alist-get match alist nil nil 'equal)))
 
 (setq process-history-completing-read-fn
