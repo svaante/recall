@@ -75,6 +75,7 @@
 
 (defcustom process-history-buffer-match
   '((major-mode . compilation-mode)
+    (major-mode . shell-command-mode)
     (major-mode . eshell-mode))
   "Add history for additional process buffers.
 See `buffer-match-p'.
