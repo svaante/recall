@@ -173,11 +173,11 @@ return string."
   :type 'alist)
 
 (defcustom process-history-list-format
-  (vector '("Command" 80 t)
+  (vector '("Command" 75 t)
           '("RC" 4 t :right-align t)
           '("Start" 13 t :right-align t)
           '("Time" 8 t :right-align t)
-	  '("Directory" 35 t :right-align t)
+	  '("Directory" 30 t :right-align t)
           '("VC" 8 t)
           '("Buffer" 25 t)
           '("PID" 8 t))
