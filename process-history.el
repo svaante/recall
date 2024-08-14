@@ -678,7 +678,7 @@ for pruning options."
                     (ignore-errors (process-live-p (--item-process item)))))))
   (let ((process (--item-process history-item)))
     (unless process
-      (user-error "Current history item does not have an live process."))
+      (user-error "Current history item does not have an live process"))
     (kill-process process)))
 
 (--def-do-command process-history-do-process-kill process-history-process-kill
