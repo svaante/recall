@@ -306,7 +306,7 @@ See `process-history-completing-read'."
 
 
 ;;; Latch on `make-process'
-(defvar --condition nil)
+(defvar --parent-condition nil)
 
 (defun --make-process (make-process &rest args)
   (let (command directory buffer condition)
@@ -327,15 +327,15 @@ See `process-history-completing-read'."
        (not (string-empty-p command))
        ;; Check condition
        (setq condition
-             (or
-              ;; Injected from `process-history-rerun'
-              --condition
-              (cl-find this-command
-                       process-history-this-command)
-              (cl-find-if (lambda (condition)
-                            (and (bufferp buffer)
-                                 (buffer-match-p condition buffer)))
-                          process-history-buffer-match))))
+             ;; Using stack scoped `--parent-condition' to inherit
+             ;; condition from rerunned item.
+             (or --parent-condition
+                 (cl-find this-command
+                          process-history-this-command)
+                 (cl-find-if (lambda (condition)
+                               (and (bufferp buffer)
+                                    (buffer-match-p condition buffer)))
+                             process-history-buffer-match))))
       (let ((item
              (make-process-history--item
               :command command
@@ -661,8 +661,8 @@ for pruning options."
    (list (funcall process-history-completing-read-fn "Rerun command: ")))
   (let ((default-directory (--item-directory history-item))
         (command (--item-command history-item))
-        (--condition (--item-condition history-item)))
-    (funcall (cdr (or (assoc --condition process-history-rerun-alist)
+        (--parent-condition (--item-condition history-item)))
+    (funcall (cdr (or (assoc --parent-condition process-history-rerun-alist)
                       (assoc nil process-history-rerun-alist)))
              command)
     (message "Running %S" command)))
