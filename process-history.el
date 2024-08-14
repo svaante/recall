@@ -378,12 +378,8 @@ See `process-history-completing-read'."
     (lambda (proc string)
       (unwind-protect
           (funcall filter proc string)
-        ;; TODO Allow for filter function hooks like
-        ;;      `comint-output-filter-functions'.
-        (write-region string nil log-file 'append 'no-echo)
-        (when-let ((buffer (get-file-buffer log-file)))
-          (with-current-buffer buffer
-            (revert-buffer nil t t)))))))
+        (let ((coding-system-for-write 'raw-text))
+          (write-region string nil log-file 'append 'no-echo))))))
 
 (defun --make-sentinel (item sentinel)
   (let ((sentinel (or sentinel 'ignore)))
