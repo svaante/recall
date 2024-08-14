@@ -321,7 +321,11 @@ See `process-history-completing-read'."
                         ((pred bufferp) buffer)
                         ((pred stringp) (get-buffer buffer))
                         (_  (current-buffer)))))
+       ;; Skip if not from command
+       this-command
+       ;; Skip empty commands
        (not (string-empty-p command))
+       ;; Check condition
        (setq condition
              (or
               ;; Injected from `process-history-rerun'
