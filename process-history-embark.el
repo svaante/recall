@@ -41,7 +41,7 @@
   :doc "Process history actions"
   :parent embark-general-map
   "b" #'process-history-buffer
-  "f" #'process-history-find-log
+  "l" #'process-history-find-log
   "k" #'process-history-process-kill
   "r" #'process-history-rerun
   "w" #'process-history-copy-as-kill-command
