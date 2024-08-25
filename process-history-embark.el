@@ -44,6 +44,7 @@
   "f" #'process-history-find-log
   "k" #'process-history-process-kill
   "r" #'process-history-rerun
+  "e" #'process-history-rerun-edit
   "w" #'process-history-copy-as-kill-command
   "d" #'process-history-delete-item)
 

@@ -418,6 +418,7 @@ See `process-history-completing-read'."
   "C-m"           #'process-history-do-find-log
   "D"             #'process-history-do-process-kill
   "r"             #'process-history-do-rerun
+  "e"             #'process-history-do-rerun-edit
   "o"             #'process-history-do-buffer
   "w"             #'process-history-do-copy-as-kill-command
   "d"             #'process-history-do-delete-item
@@ -669,6 +670,24 @@ for pruning options."
 
 (--def-do-command process-history-do-rerun process-history-rerun
   "Rerun command of this item.")
+
+(defun process-history-rerun-edit (history-item)
+  "Edit and rerun command from HISTORY-ITEM."
+  (interactive
+   (list (funcall process-history-completing-read-fn "Rerun edit command: ")))
+  (let ((default-directory (--item-directory history-item))
+        (command (--item-command history-item))
+        (--parent-condition (--item-condition history-item)))
+    (minibuffer-with-setup-hook
+        (lambda ()
+          (delete-region (minibuffer-prompt-end) (point-max))
+          (insert command))
+      (call-interactively (cdr (or (assoc --parent-condition process-history-rerun-alist)
+                                   (assoc nil process-history-rerun-alist)))
+                          command))))
+
+(--def-do-command process-history-do-rerun-edit process-history-rerun-edit
+  "Edit and rerun command of this item.")
 
 (defun process-history-process-kill (history-item)
   "Kill HISTORY-ITEMs process."
