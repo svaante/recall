@@ -498,8 +498,10 @@ If ITEMS is non nil display all items."
                                       'face 'process-history-log-overlay-face)
                           "\n"))))
   (setq buffer-file-name nil
-        default-directory (--item-directory --log-item))
-  (rename-buffer (format "*Log %S*" (--item-command --log-item)) t)
+        default-directory (--item-directory --log-item)
+        mode-line-buffer-identification
+        (append mode-line-buffer-identification
+                (list (format " {%s}" (--item-command --log-item)))))
   (let ((inhibit-read-only t))
     (run-hooks '--log-filter-functions)))
 
