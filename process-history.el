@@ -173,7 +173,7 @@ return string."
   :type 'alist)
 
 (defcustom process-history-list-format
-  (vector '("Command" 60 t)
+  (vector '("Command" 70 t)
 	  '("Directory" 28 t :right-align t)
           '("Time" 6 t :right-align t)
           '("RC" 3 t :right-align t)
