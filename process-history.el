@@ -312,16 +312,17 @@ See `process-history-completing-read'."
   (let (command directory buffer condition)
     (cond
      ((and
-       ;; Skip tramp process
-       (not (equal signal-hook-function 'tramp-signal-hook-function))
+       ;; Handle tramp process
+       (or (not (equal signal-hook-function 'tramp-signal-hook-function))
+           (plist-get args :file-handler))
        (setq command (--command-to-string (plist-get args :command))
              directory (or (plist-get args :directory) default-directory)
              buffer (let ((buffer (plist-get args :buffer)))
                       (pcase buffer
                         ((pred bufferp) buffer)
                         ((pred stringp) (get-buffer buffer))
-                        (_  (current-buffer)))))
-       ;; Skip if not from command
+                        (_ (current-buffer)))))
+       ;; Skip if not command
        this-command
        ;; Skip empty commands
        (not (string-empty-p command))
