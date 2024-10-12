@@ -131,22 +131,20 @@ See `time-stamp-format'."
 
 (defcustom process-history-format-alist
   '(("Command" . --item-command)
-    ("RC" .
-     (lambda (item)
-       (when-let ((code (--item-exit-code item)))
-         (propertize
-          (format "%s" code) 'face
-          (cond
-           ((and-let* ((process (--item-process item)))
-              (process-live-p process))
-            'default)
-           ((equal (--item-exit-code item) 0)
-            'process-history-success-face)
-           (t 'process-history-error-face))))))
-    ("Start" .
-     (lambda (item)
-       (propertize (--format-time (--item-start-time item))
-                   'face 'process-history-time-face)))
+    ("RC" . (lambda (item)
+              (when-let ((code (--item-exit-code item)))
+                (propertize
+                 (format "%s" code) 'face
+                 (cond
+                  ((and-let* ((process (--item-process item)))
+                     (process-live-p process))
+                   'default)
+                  ((equal (--item-exit-code item) 0)
+                   'process-history-success-face)
+                  (t 'process-history-error-face))))))
+    ("Start" . (lambda (item)
+                 (propertize (--format-time (--item-start-time item))
+                             'face 'process-history-time-face)))
     ("Time" . (lambda (item)
                 (propertize
                  (--relative-time
