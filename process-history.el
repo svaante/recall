@@ -291,16 +291,17 @@ See `process-history-completing-read'."
   `(defun ,name ()
      ,doc
      (interactive)
-     (let ((item (cond
-                  ((derived-mode-p 'process-history-list-mode)
+     (let ((item
+            (cond ((derived-mode-p 'process-history-list-mode)
                    (tabulated-list-get-id))
                   ((derived-mode-p 'process-history-log-mode)
-                   --log-item)))
-           (buffer (current-buffer)))
+                   --local-item)))
+           (buffer (current-buffer))
+           (window (selected-window)))
        (,command item)
        (accept-process-output (--item-process item) 0.2)
-       (with-current-buffer buffer
-         (when (eq major-mode 'process-history-list-mode)
+       (when (eq (window-buffer window) buffer)
+         (with-selected-window window
            (revert-buffer nil nil t)
            (forward-line))))))
 
@@ -455,7 +456,7 @@ If ITEMS is non nil display all items."
 ;;; Logs
 (defvar --log-filter-functions nil)
 
-(defvar-local --log-item nil)
+(defvar-local --local-item nil)
 
 (defvar-keymap process-history-log-mode-map
   :doc "Local keymap for `process-history-mode' buffers."
@@ -466,11 +467,11 @@ If ITEMS is non nil display all items."
 (define-derived-mode process-history-log-mode special-mode "Log"
   "Mode active in `process-history' log files."
   ;; TODO Auto revert overlay info
-  (setq --log-item
+  (setq --local-item
         (cl-find-if (lambda (item)
                       (equal (--log-file item) buffer-file-name))
                     process-history))
-  (unless --log-item
+  (unless --local-item
     (user-error "Unable find connection with log file %s in `process-history'"
                 buffer-file-name))
   (unless (file-exists-p buffer-file-name)
@@ -490,7 +491,7 @@ If ITEMS is non nil display all items."
                   (apply 'max (mapcar (lambda (x) (length (car x)))
                                       process-history-format-alist))
                   for (name . accessor) in process-history-format-alist
-                  for value = (funcall accessor --log-item)
+                  for value = (funcall accessor --local-item)
                   when value concat
                   (format (format "%%%ds: %%s\n" max-length) name value)
                   into before-string
@@ -499,10 +500,10 @@ If ITEMS is non nil display all items."
                                       'face 'process-history-log-overlay-face)
                           "\n"))))
   (setq buffer-file-name nil
-        default-directory (--item-directory --log-item)
+        default-directory (--item-directory --local-item)
         mode-line-buffer-identification
         (append mode-line-buffer-identification
-                (list (format " {%s}" (--item-command --log-item)))))
+                (list (format " {%s}" (--item-command --local-item)))))
   (let ((inhibit-read-only t))
     (run-hooks '--log-filter-functions)))
 
@@ -619,7 +620,7 @@ for pruning options."
             (cl-find history-item
                      (buffer-list)
                      :key (lambda (buffer)
-                            (with-current-buffer buffer --log-item)))))
+                            (with-current-buffer buffer --local-item)))))
       (pop-to-buffer buffer)
     (find-file (--log-file history-item))
     (process-history-log-mode)))
