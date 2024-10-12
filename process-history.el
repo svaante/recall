@@ -292,18 +292,12 @@ See `process-history-completing-read'."
      ,doc
      (interactive)
      (let ((item
-            (cond ((derived-mode-p 'process-history-list-mode)
-                   (tabulated-list-get-id))
-                  ((derived-mode-p 'process-history-log-mode)
-                   --local-item)))
-           (buffer (current-buffer))
-           (window (selected-window)))
-       (,command item)
-       (accept-process-output (--item-process item) 0.2)
-       (when (eq (window-buffer window) buffer)
-         (with-selected-window window
-           (revert-buffer nil nil t)
-           (forward-line))))))
+            (pcase major-mode
+              ('process-history-list-mode (tabulated-list-get-id))
+              ('process-history-log-mode --local-item))))
+       (when (eq major-mode 'process-history-list-mode)
+         (forward-line))
+       (,command item))))
 
 
 ;;; Latch on `make-process'
