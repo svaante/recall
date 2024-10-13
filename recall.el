@@ -403,7 +403,7 @@ See `recall-completing-read'."
   "Display an list of live and exited Emacs subprocesses.
 If ITEMS is non nil display all processes."
   (interactive)
-  (let ((buffer (get-buffer-create "*recall*")))
+  (let ((buffer (get-buffer-create "*Recall*")))
     (with-current-buffer buffer
       (recall-list-mode)
       (setq recall-list-items items)
