@@ -1,60 +1,37 @@
-#+title: Process History - Extensive history for processes
+#+title: Recall Emacs process history
 #+author: Daniel Pettersson
 #+language: en
 
-This package `advice-add's =make-process= and friends to store
+This package =advice-add=s =make-process= and friends to store
 metadata like; working directory, stdout, start time, end time,
-exit code and version control revision for any Emacs sub-processes.
+exit code and version control revision for Emacs processes.
 
 It defines commands to view and manage both currently running
-processes and exited processes, accessible via the minibuffer
-and a specialized =tabulated-list= buffer.
+processes and historical processes, accessible via the minibuffer
+and/or a specialized =tabulated-list= buffer.
 
-Joining the functionality of bash =reverse-i-search= with =proced=.
+Joining the functionality of bash reverse-i-search with =proced=.
 
-Enable process surveillance with =process-history-mode=.
+Enable process surveillance with =recall-mode=.
 
-Integration with consult and embark are found in extensions/*.el
+Includes integration with =embark= and =consult=.
 
 * Configuration
 #+begin_src emacs-lisp
-  (use-package process-history
-    :vc (:url "https://github.com/svaante/process-history")
+  (use-package recall
+    :vc (:url "https://github.com/svaante/recall")
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
-    ;; ("C-x C-r" . process-history-list)
+    ;; ("C-x C-r" . recall-list)
     ;; Or if minibuffer completion is your preferable interface
-    ;; ("C-x C-r" . process-history-find-dwim)
+    ;; ("C-x C-r" . recall-rerun)
     :config
-    ;; Where to place logs
-    ;; (setq process-history-directory "/some/log/dir")
-
-    ;; Which buffers to enable process history for (comes with sensible defaults)
-    ;; (add-to-list 'process-history-buffer-match "\\*dape-shell\\*")
-
-    ;; Which buffers to enable process history for (comes with sensible defaults)
-    ;; (add-to-list 'process-history-this-command 'dired-shell-command)
-
-
-    ;; Enable `make-process' advice
-    (process-history-mode))
-
-  ;; Consult integration
-  (use-package process-history-consult
-    :ensure nil
-    :config
-    (setq process-history-completing-read-fn
-  	  'process-history-consult-completing-read))
-
-  ;; Embark integration
-  (use-package process-history-embark
-    :ensure nil)
+    (recall-mode))
 #+end_src
 
 * Note
 As this package advices core functionality, usage might have
-unintended consequences.  Disable =process-history-mode= at the
+unintended consequences.  Disable =recall-mode= at the
 first signs of process spawning troubles.
 
-Package takes some inspiration from the excellent package
-=detached.el=.
+Package is inspired by detached.el
