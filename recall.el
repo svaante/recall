@@ -608,15 +608,6 @@ for pruning options."
 (recall--def-do-command recall-do-buffer recall-buffer
   "View buffer for this command.")
 
-(defun recall-find-dwim (command)
-  "View buffer or log associated with COMMAND."
-  (interactive
-   (list (funcall recall-completing-read-fn "View log or buffer: ")))
-  (let ((process (recall--command-process command)))
-    (if (and (processp process) (process-live-p process))
-        (recall-buffer command)
-      (recall-log command))))
-
 (defun recall-rerun (command)
   "Rerun COMMAND."
   (interactive
