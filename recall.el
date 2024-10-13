@@ -388,7 +388,7 @@ See `recall-completing-read'."
 (defvar recall-list-mode nil)
 
 (define-derived-mode recall-list-mode tabulated-list-mode "Recall List"
-  "List Recalled commands."
+  "List Recalled commands and their processes."
   :interactive nil
   (setq-local buffer-stale-function (lambda (&optional _noconfirm) 'fast)
               recall-list-mode t)
