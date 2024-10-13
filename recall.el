@@ -453,13 +453,13 @@ If ITEMS is non nil display all processes."
                   (concat (propertize before-string
                                       'face 'recall-log-overlay-face)
                           "\n")))
-         (overlay
-          (or (cl-find 'recall-log-overlay
-                       (overlays-in (point-min) (point-max))
-                       :key (lambda (ov) (overlay-get ov 'category)))
-              (make-overlay (point-min) (point-min)))))
-        (overlay-put overlay 'category 'recall-log-overlay)
-        (overlay-put overlay 'before-string before-string))
+        (overlay
+         (or (cl-find 'recall-log-overlay
+                      (overlays-in (point-min) (point-max))
+                      :key (lambda (ov) (overlay-get ov 'category)))
+             (make-overlay (point-min) (point-min)))))
+    (overlay-put overlay 'category 'recall-log-overlay)
+    (overlay-put overlay 'before-string before-string))
   (setq buffer-file-name nil
         default-directory (recall--item-directory recall--item)
         mode-line-buffer-identification
