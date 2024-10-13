@@ -439,26 +439,27 @@ If ITEMS is non nil display all processes."
       (save-excursion
         (insert (propertize "* Log file has been deleted *"
                             'face 'warning)))))
-  (let ((overlay
-         (or (cl-find 'recall-log-overlay
-                      (overlays-in (point-min) (point-max))
-                      :key (lambda (ov) (overlay-get ov 'category)))
-             (make-overlay (point-min) (point-min)))))
-    (overlay-put overlay 'category 'recall-log-overlay)
-    (overlay-put overlay 'before-string
-                 (cl-loop
-                  with max-length =
+  (let ((before-string
+         (cl-loop with max-length =
                   (apply 'max (mapcar (lambda (x) (length (car x)))
                                       recall-format-alist))
-                  for (name . accessor) in recall-format-alist
+                  for (name . accessor) in
+                  (cons '("Command" . recall--item-command) recall-format-alist)
                   for value = (funcall accessor recall--item)
-                  when value concat
-                  (format (format "%%%ds: %%s\n" max-length) name value)
+                  when value concat (format (format "%%%ds: %%s\n" max-length)
+                                            name value)
                   into before-string
                   finally return
                   (concat (propertize before-string
                                       'face 'recall-log-overlay-face)
-                          "\n"))))
+                          "\n")))
+         (overlay
+          (or (cl-find 'recall-log-overlay
+                       (overlays-in (point-min) (point-max))
+                       :key (lambda (ov) (overlay-get ov 'category)))
+              (make-overlay (point-min) (point-min)))))
+        (overlay-put overlay 'category 'recall-log-overlay)
+        (overlay-put overlay 'before-string before-string))
   (setq buffer-file-name nil
         default-directory (recall--item-directory recall--item)
         mode-line-buffer-identification
