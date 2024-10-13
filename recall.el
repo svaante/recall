@@ -692,26 +692,11 @@ for pruning options."
 (defvar embark-exporters-alist)
 (defvar embark-target-finders)
 
-(defvar-keymap embark-recall-actions-map
-  :doc "Recall actions"
-  :parent embark-general-map
-  "b" #'recall-buffer
-  "f" #'recall-log
-  "k" #'recall-process-kill
-  "r" #'recall-rerun
-  "e" #'recall-rerun-edit
-  "w" #'recall-copy-as-kill-command
-  "d" #'recall-delete)
-
-(add-to-list 'embark-keymap-alist '(recall . embark-recall-actions-map))
-
 (defun recall-export (candidates)
   (let ((alist (recall--collection)))
     (recall-list (mapcar (lambda (cand)
                            (cdr (assoc cand alist)))
                          candidates))))
-
-(add-to-list 'embark-exporters-alist '(recall . recall-export))
 
 (defun recall-embark-target-finder ()
   (when (derived-mode-p 'recall-list-mode)
@@ -719,7 +704,21 @@ for pruning options."
              ,(line-beginning-position)
              . ,(1- (line-beginning-position 2)))))
 
-(add-to-list 'embark-target-finders #'recall-embark-target-finder)
+(with-eval-after-load 'embark
+  (defvar-keymap embark-recall-actions-map
+    :doc "Recall actions"
+    :parent embark-general-map
+    "b" #'recall-buffer
+    "f" #'recall-log
+    "k" #'recall-process-kill
+    "r" #'recall-rerun
+    "e" #'recall-rerun-edit
+    "w" #'recall-copy-as-kill-command
+    "d" #'recall-delete)
+
+  (add-to-list 'embark-keymap-alist '(recall . embark-recall-actions-map))
+  (add-to-list 'embark-exporters-alist '(recall . recall-export))
+  (add-to-list 'embark-target-finders #'recall-embark-target-finder))
 
 
 ;;; Consult integration
