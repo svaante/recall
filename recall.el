@@ -144,15 +144,14 @@ Alist of (NAME . FN) pairs.  Where FN takes `recall--command' should
 return string."
   :type 'alist)
 
-(defcustom recall-list-format
-  [("Command" 70 t)
-   ("Directory" 28 t :right-align t)
-   ("Time" 6 t :right-align t)
-   ("RC" 3 t :right-align t)
-   ("Start" 12 t :right-align t)
-   ("VC" 8 t)
-   ("Buffer" 25 t)
-   ("PID" 8 t)]
+(defcustom recall-list-format [("Command" 70 t)
+                               ("Directory" 28 t :right-align t)
+                               ("Time" 6 t :right-align t)
+                               ("RC" 3 t :right-align t)
+                               ("Start" 12 t :right-align t)
+                               ("VC" 8 t)
+                               ("Buffer" 25 t)
+                               ("PID" 8 t)]
   "See `tabulated-list-format'.
 Each NAME needs to exist in `recall-format-alist' to be
 displayed correctly."
