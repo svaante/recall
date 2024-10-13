@@ -71,9 +71,11 @@
   "File to store history."
   :type 'file)
 
-(defcustom recall-buffer-match '((major-mode . compilation-mode)
+(defcustom recall-buffer-match `((major-mode . compilation-mode)
                                  (major-mode . shell-command-mode)
-                                 (major-mode . eshell-mode))
+                                 (major-mode . eshell-mode)
+                                 ;; `dired-mode'
+                                 ,(regexp-quote shell-command-buffer-name-async))
   "Add surveillance for additional process buffers.
 See `buffer-match-p'."
   :type '(repeat (choice :tag "Condition"

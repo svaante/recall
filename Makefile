@@ -12,10 +12,6 @@ all: $(ELCFILES)
 	          -batch \
                   -no-site-file \
                   -L . \
-	          --eval="(package-initialize)" \
-		  --eval="(package-refresh-contents)" \
-	          --eval="(package-install 'consult)" \
-	          --eval="(package-install 'embark)" \
 		  --eval '(setq byte-compile-error-on-warn t)' \
                   -f batch-byte-compile $<
 

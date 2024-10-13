@@ -9,6 +9,12 @@ commands to view and manage both currently running processes and
 historical processes, accessible via the minibuffer and/or a
 specialized =tabulated-list= buffer.
 
+Out of the box =recall= supports (see =recall-buffer-match=):
+- =async-shell-command=
+- =compile=
+- =eshell=
+- =dired-do-async-shell-command=
+
 Joining the functionality of bash reverse-i-search with =proced=.
 
 Includes integration with =embark= and =consult=.
