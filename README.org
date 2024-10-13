@@ -19,9 +19,9 @@ Includes integration with =embark= and =consult=.
     :vc (:url "https://github.com/svaante/recall")
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
-    ;; ("C-x C-r" . recall-list)
+    ("C-x C-r" . recall-list)
     ;; Or if minibuffer completion is your preferable interface
-    ;; ("C-x C-r" . recall-rerun)
+    ("C-x C-r" . recall-rerun)
     :config
     ;; Enable process surveillance
     (recall-mode))
