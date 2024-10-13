@@ -144,7 +144,7 @@ Alist of (NAME . FN) pairs.  Where FN takes `recall--item' should
 return string."
   :type 'alist)
 
-(defcustom recall-list-format [("Item" 70 t)
+(defcustom recall-list-format [("Command" 70 t)
                                ("Directory" 28 t :right-align t)
                                ("Time" 6 t :right-align t)
                                ("RC" 3 t :right-align t)
@@ -365,7 +365,7 @@ See `recall-completing-read'."
   (cl-loop for (name . item) in (recall--collection recall-list-items)
            for desc =
            (cl-loop for (col) across tabulated-list-format collect
-                    (cond ((equal col "Item") name)
+                    (cond ((equal col "Command") name)
                           ((funcall (cdr (assoc col recall-format-alist)) item))
                           (t "--"))
                     into desc finally return (apply 'vector desc))
