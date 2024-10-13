@@ -375,14 +375,14 @@ See `recall-completing-read'."
 (defvar-keymap recall-list-mode-map
   :doc "Local keymap for `recall-list-mode' buffers."
   :parent tabulated-list-mode-map
-  "C-m"           #'recall-do-log
+  "C-m"           #'recall-do-find-log
   "D"             #'recall-do-process-kill
   "r"             #'recall-do-rerun
   "e"             #'recall-do-rerun-edit
   "o"             #'recall-do-buffer
   "w"             #'recall-do-copy-as-kill-command
   "d"             #'recall-do-delete
-  "<mouse-2>"     #'recall-do-log
+  "<mouse-2>"     #'recall-do-find-log
   "<follow-link>" 'mouse-face)
 
 (defvar recall-list-mode nil)
@@ -480,7 +480,7 @@ If COMMANDS is non nil display all commands."
              do (puthash string (1+ (gethash string string-count 0))
                          string-count)
              do (puthash string (eq (gethash string string-unique-p 'not-found)
-                                  'not-found)
+                                    'not-found)
                          string-unique-p))
     (cl-loop with commands = (or commands recall-commands)
              for command in commands
@@ -570,7 +570,7 @@ for pruning options."
       (write-region (point-min) (point-max) recall-save-file nil
 		    (unless (called-interactively-p 'interactive) 'quiet)))))
 
-(defun recall-log (command)
+(defun recall-find-log (command)
   "View log for COMMAND."
   (interactive
    (list (funcall recall-completing-read-fn "View log: ")))
@@ -583,7 +583,7 @@ for pruning options."
     (find-file (recall--log-file command))
     (recall-log-mode)))
 
-(recall--def-do-command recall-do-log recall-log
+(recall--def-do-command recall-do-find-log recall-find-log
   "View log for this command.")
 
 (defun recall-buffer (command)
@@ -701,7 +701,7 @@ for pruning options."
     :doc "Recall actions"
     :parent embark-general-map
     "b" #'recall-buffer
-    "f" #'recall-log
+    "f" #'recall-find-log
     "k" #'recall-process-kill
     "r" #'recall-rerun
     "e" #'recall-rerun-edit
