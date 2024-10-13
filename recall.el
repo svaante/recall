@@ -6,7 +6,7 @@
 ;; Maintainer: Daniel Pettersson <daniel@dpettersson.net>
 ;; Created: 2023
 ;; License: GPL-3.0-or-later
-;; Version: 0.0.2
+;; Version: 0.0.1
 ;; Homepage: https://github.com/svaante/recall
 ;; Package-Requires: ((emacs "29.1"))
 
