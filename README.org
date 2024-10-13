@@ -1,4 +1,4 @@
-#+title: Recall - Recall Emacs process history
+#+title: Recall - Recall Emacs subprocess
 #+author: Daniel Pettersson
 #+language: en
 

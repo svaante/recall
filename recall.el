@@ -1,4 +1,4 @@
-;;; recall.el --- Recall Emacs process history -*- lexical-binding: t -*-
+;;; recall.el --- Recall Emacs subprocess -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023  Free Software Foundation, Inc.
 
@@ -29,7 +29,7 @@
 
 ;; This package `advice-add's `make-process' and friends to store
 ;; metadata like; working directory, stdout, start time, end time,
-;; exit code and version control revision for any Emacs subprocesses.
+;; exit code and version control revision for Emacs subprocesses.
 
 ;; It defines commands to view and manage both currently running
 ;; processes and historical processes, accessible via the minibuffer
@@ -59,7 +59,7 @@
 
 ;;; Custom
 (defgroup recall nil
-  "Recall Emacs process history."
+  "Recall Emacs subprocesses."
   :prefix "recall-"
   :group 'applications)
 
@@ -76,7 +76,7 @@
                                  (major-mode . eshell-mode)
                                  ;; `dired-mode'
                                  ,(regexp-quote shell-command-buffer-name-async))
-  "Add surveillance for additional process buffers.
+  "Record processes spawned in matching buffers.
 See `buffer-match-p'."
   :type '(repeat (choice :tag "Condition"
 			 regexp
@@ -84,67 +84,67 @@ See `buffer-match-p'."
 
 (defcustom recall-rerun-alist '((nil . async-shell-command)
                                 ((major-mode . compilation-mode) . compile))
-  "Rerun command from ALIST specification (CONDITION . FN).
-Where condition is either an command in `recall-buffer-match',
+  "Rerun item from ALIST specification (CONDITION . FN).
+Where condition is either an item in `recall-buffer-match',
 `recall-this-command' or nil for anything else."
   :type 'alist)
 
 (defcustom recall-prune-after (* 60 60 24 7 2) ;; two weeks
   "Prune history after seconds on `recall-save'."
-  :type '(choice (natnum :tag "Prune history command after seconds.")
+  :type '(choice (natnum :tag "Prune history item after seconds.")
                  (const :tag "Never prune." nil)))
 
 (defcustom recall-prune-keep-unique t
-  "Keep unique command strings in history."
+  "Keep unique item strings in history."
   :type 'boolean)
 
 (defcustom recall-log-format "%Y-%02m-%02d_%02H_%02M:%02S_%N.log"
   "Log file format.
 Warning: `recall' won't find old logs if changed.
 See `time-stamp-format'."
-  :type 'string)
+  :type 'command)
 
 (defcustom recall-format-alist
-  '(("RC"        . (lambda (command)
-                     (when-let ((code (recall--command-exit-code command)))
+  '(("RC"        . (lambda (item)
+                     (when-let ((code (recall--item-exit-code item)))
                        (propertize
                         (format "%s" code) 'face
                         (cond
-                         ((and-let* ((process (recall--command-process command)))
+                         ((and-let* ((process (recall--item-process item)))
                             (process-live-p process))
                           'default)
-                         ((equal (recall--command-exit-code command) 0)
+                         ((equal (recall--item-exit-code item) 0)
                           'recall-success-face)
                          (t 'recall-error-face))))))
-    ("Start"     . (lambda (command)
-                     (propertize (recall--format-time (recall--command-start-time command))
+    ("Start"     . (lambda (item)
+                     (propertize (recall--format-time (recall--item-start-time item))
                                  'face 'recall-time-face)))
-    ("Time"      . (lambda (command)
+    ("Time"      . (lambda (item)
                      (propertize
                       (recall--relative-time
-                       (- (time-to-seconds (recall--command-end-time command))
-                          (time-to-seconds (recall--command-start-time command))))
+                       (- (time-to-seconds (recall--item-end-time item))
+                          (time-to-seconds (recall--item-start-time item))))
                       'face 'recall-time-face)))
-    ("Directory" . (lambda (command)
+    ("Directory" . (lambda (item)
                      (propertize
-                      (directory-file-name (recall--command-directory command))
+                      (directory-file-name (recall--item-directory item))
                       'face 'recall-directory-face)))
-    ("VC"        . (lambda (command)
-                     (when-let ((vc (recall--command-vc command)))
+    ("VC"        . (lambda (item)
+                     (when-let ((vc (recall--item-vc item)))
                        (propertize vc 'face 'recall-vc-face))))
-    ("Buffer"    . (lambda (command)
-                     (let ((process (recall--command-process command)))
+    ("Buffer"    . (lambda (item)
+                     (let ((process (recall--item-process item)))
                        (when (process-live-p process)
                          (format "%s" (process-buffer process))))))
-    ("PID"       . (lambda (command)
+    ("PID"       . (lambda (item)
                      (ignore-errors
-                       (format "%s" (process-id (recall--command-process command)))))))
-  "Log command format alist.
-Alist of (NAME . FN) pairs.  Where FN takes `recall--command' should
+                       (format "%s" (process-id (recall--item-process item)))))))
+  "Log item format alist.
+Alist of (NAME . FN) pairs.  Where FN takes `recall--item' should
 return string."
   :type 'alist)
 
-(defcustom recall-list-format [("Command" 70 t)
+(defcustom recall-list-format [("Item" 70 t)
                                ("Directory" 28 t :right-align t)
                                ("Time" 6 t :right-align t)
                                ("RC" 3 t :right-align t)
@@ -158,7 +158,7 @@ displayed correctly."
   :type '(vector (repeat :inline t sexp)))
 
 (defcustom recall-completing-read-fn #'recall-completing-read
-  "Function used to complete `command candidates.
+  "Function used to complete `item candidates.
 See `recall-completing-read'."
   :type 'function)
 
@@ -194,29 +194,29 @@ See `recall-completing-read'."
 
 
 ;;; Global vars
-(defvar recall-commands nil
-  "List of `recall--command' commands.")
+(defvar recall-items nil
+  "List of `recall--item'.")
 
 
 ;;; Data
-(cl-defstruct (recall--command (:type list))
-  string directory exit-code start-time end-time vc condition process)
+(cl-defstruct (recall--item (:type list))
+  command directory exit-code start-time end-time vc condition process)
 
 
 ;;; Utils
-(defun recall--command-to-string (command)
+(defun recall--item-to-string (item)
   ;; HACK Prettier paths in `eshell-mode'
   (if (eq this-command 'eshell-send-input)
       (buffer-substring-no-properties eshell-last-input-start
                                       (1- eshell-last-input-end))
     (string-trim
-     (string-join (if (equal (nth 1 command) shell-command-switch)
-                      (nthcdr 2 command)
-                    command)
+     (string-join (if (equal (nth 1 item) shell-command-switch)
+                      (nthcdr 2 item)
+                    item)
                   " "))))
 
-(defun recall--log-file (command)
-  (thread-last (recall--command-start-time command)
+(defun recall--log-file (item)
+  (thread-last (recall--item-start-time item)
                (format-time-string recall-log-format)
                (file-name-concat recall-directory)))
 
@@ -233,45 +233,45 @@ See `recall-completing-read'."
       (format "%s ago" (recall--relative-time diff)))))
 
 (defun recall--prune ()
-  (setq recall-commands
+  (setq recall-items
         (cl-loop with command-set = (make-hash-table :test 'equal)
-                 for command in recall-commands
-                 for string = (recall--command-string command)
-                 ;; An history command is unique if no other command
-                 ;; shares the same command string.
-                 for key = string
+                 for item in recall-items
+                 for command = (recall--item-command item)
+                 ;; An history item is unique if no other item
+                 ;; shares the same item string.
+                 for key = command
                  for unique-command-p = (not (gethash key command-set))
                  do (puthash key t command-set)
                  if (or (not recall-prune-after)
                         (< (- (time-to-seconds)
                               (time-to-seconds
-                               (recall--command-start-time command)))
+                               (recall--item-start-time item)))
                            recall-prune-after)
                         (and recall-prune-keep-unique
                              unique-command-p))
-                 collect command
-                 else do (delete-file (recall--log-file command)))))
+                 collect item
+                 else do (delete-file (recall--log-file item)))))
 
 (defmacro recall--def-do-command (name base-command doc)
   (declare (indent 2))
   `(defun ,name ()
      ,doc
      (interactive nil recall-list-mode recall-log-mode)
-     (let ((command
+     (let ((item
             (pcase major-mode
               ('recall-list-mode (tabulated-list-get-id))
-              ('recall-log-mode recall--command)
+              ('recall-log-mode recall--item)
               (_ (user-error "Expects `recall-list-mode' or `recall-log-mode'")))))
        (when (eq major-mode 'recall-list-mode)
          (forward-line))
-       (,base-command command))))
+       (,base-command item))))
 
 
 ;;; Latch on `make-process'
 (defvar recall--parent-condition nil)
 
 (defun recall--make-process (make-process &rest args)
-  (let (string directory buffer condition)
+  (let (command directory buffer condition)
     (cond
      ((and
        ;; Skip if not interactive
@@ -279,15 +279,15 @@ See `recall-completing-read'."
        ;; Handle tramp process
        (or (not (equal signal-hook-function 'tramp-signal-hook-function))
            (plist-get args :file-handler))
-       (setq string (recall--command-to-string (plist-get args :command))
+       (setq command (recall--item-to-string (plist-get args :command))
              directory (or (plist-get args :directory) default-directory)
              buffer (let ((buffer (plist-get args :buffer)))
                       (pcase buffer
                         ((pred bufferp) buffer)
                         ((pred stringp) (get-buffer buffer))
                         (_ (current-buffer)))))
-       ;; Skip empty commands
-       (not (string-empty-p string))
+       ;; Skip empty items
+       (not (string-empty-p command))
        ;; Check condition
        (setq condition
              ;; Using stack scoped `recall--parent-condition' to inherit
@@ -297,79 +297,79 @@ See `recall-completing-read'."
                                (and (bufferp buffer)
                                     (buffer-match-p condition buffer)))
                              recall-buffer-match))))
-      (let ((command
-             (make-recall--command
-              :string string
+      (let ((item
+             (make-recall--item
+              :command command
               :start-time (current-time)
               :directory (abbreviate-file-name directory)
               :condition condition
               ;; FIXME Should be possible to support other vc backends
               ;; TODO Would be nice if we could store dirty, clean etc.
               :vc (vc-working-revision (file-name-as-directory directory) 'Git))))
-        (dired-create-empty-file (recall--log-file command))
+        (dired-create-empty-file (recall--log-file item))
         (plist-put args :filter
-                   (recall--make-filter command (plist-get args :filter)))
+                   (recall--make-filter item (plist-get args :filter)))
         (plist-put args :sentinel
-                   (recall--make-sentinel command (plist-get args :sentinel)))
-        (push command recall-commands)
-        (setf (recall--command-process command) (apply make-process args))))
+                   (recall--make-sentinel item (plist-get args :sentinel)))
+        (push item recall-items)
+        (setf (recall--item-process item) (apply make-process args))))
      (t
       (apply make-process args)))))
 
 (defun recall--set-process-filter (set-filter process filter)
-  (if-let ((command (car (cl-member process
-                                    recall-commands
-                                    :key 'recall--command-process))))
-      (funcall set-filter process (recall--make-filter command filter))
+  (if-let ((item (car (cl-member process
+                                 recall-items
+                                 :key 'recall--item-process))))
+      (funcall set-filter process (recall--make-filter item filter))
     (funcall set-filter process filter)))
 
 (defun recall--set-process-sentinel (set-sentinel process sentinel)
-  (if-let ((command (car (cl-member process
-                                    recall-commands
-                                    :key 'recall--command-process))))
+  (if-let ((item (car (cl-member process
+                                 recall-items
+                                 :key 'recall--item-process))))
       (funcall set-sentinel process
-               (recall--make-sentinel command sentinel))
+               (recall--make-sentinel item sentinel))
     (funcall set-sentinel process sentinel)))
 
-(defun recall--make-filter (command filter)
-  (let ((log-file (recall--log-file command))
+(defun recall--make-filter (item filter)
+  (let ((log-file (recall--log-file item))
         (filter (or filter
-                    (lambda (proc string)
+                    (lambda (proc command)
                       (with-current-buffer (process-buffer proc)
                         (save-excursion
                           (goto-char (point-max))
                           (let ((inhibit-read-only t))
-                            (insert string))))))))
-    (lambda (proc string)
+                            (insert command))))))))
+    (lambda (proc command)
       (unwind-protect
-          (funcall filter proc string)
+          (funcall filter proc command)
         (let ((coding-system-for-write 'raw-text))
-          (write-region string nil log-file 'append 'no-echo))))))
+          (write-region command nil log-file 'append 'no-echo))))))
 
-(defun recall--make-sentinel (command sentinel)
+(defun recall--make-sentinel (item sentinel)
   (let ((sentinel (or sentinel 'ignore)))
     (lambda (proc msg)
       (unwind-protect
           (funcall sentinel proc msg)
         (when (memq (process-status proc) '(exit signal))
-          (setf (recall--command-end-time command)
+          (setf (recall--item-end-time item)
                 (current-time)
-                (recall--command-exit-code command)
+                (recall--item-exit-code item)
                 (process-exit-status proc)))))))
 
 
 ;;; List
-(defvar-local recall-list-commands nil)
+(defvar-local recall-list-items nil)
 
 (defun recall--list-refresh ()
-  (cl-loop for (name . command) in (recall--collection recall-list-commands)
+  (cl-loop for (name . item) in (recall--collection recall-list-items)
            for desc =
            (cl-loop for (col) across tabulated-list-format collect
-                    (cond ((equal col "Command") name)
-                          ((funcall (cdr (assoc col recall-format-alist)) command))
+                    (cond ((equal col "Item") name)
+                          ((funcall (cdr (assoc col recall-format-alist)) item))
                           (t "--"))
                     into desc finally return (apply 'vector desc))
-           collect (list command desc) into entries
+           collect (list item desc) into entries
            finally do
            (setq tabulated-list-entries entries)))
 
@@ -388,8 +388,8 @@ See `recall-completing-read'."
 
 (defvar recall-list-mode nil)
 
-(define-derived-mode recall-list-mode tabulated-list-mode "Recall List"
-  "List Recalled commands and their processes."
+(define-derived-mode recall-list-mode tabulated-list-mode "Recall Command List"
+  "List of live and exited Emacs subprocesses."
   :interactive nil
   (setq-local buffer-stale-function (lambda (&optional _noconfirm) 'fast)
               recall-list-mode t)
@@ -399,14 +399,14 @@ See `recall-completing-read'."
   (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t))
 
 ;;;###autoload
-(defun recall-list (&optional commands)
-  "Display an list of recalled commands.
-If COMMANDS is non nil display all commands."
+(defun recall-list (&optional items)
+  "Display an list of live and exited Emacs subprocesses.
+If ITEMS is non nil display all processes."
   (interactive)
   (let ((buffer (get-buffer-create "*recall*")))
     (with-current-buffer buffer
       (recall-list-mode)
-      (setq recall-list-commands commands)
+      (setq recall-list-items items)
       (revert-buffer)
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
@@ -415,7 +415,7 @@ If COMMANDS is non nil display all commands."
 ;;; Logs
 (defvar recall--log-filter-functions nil)
 
-(defvar-local recall--command nil)
+(defvar-local recall--item nil)
 
 (defvar-keymap recall-log-mode-map
   :doc "Local keymap for `recall-mode' buffers."
@@ -425,13 +425,14 @@ If COMMANDS is non nil display all commands."
 
 (define-derived-mode recall-log-mode special-mode "Log"
   "Mode active in `recall' log files."
+  :interactive nil
   ;; TODO Auto revert overlay info
-  (setq recall--command
-        (cl-find-if (lambda (command)
-                      (equal (recall--log-file command) buffer-file-name))
-                    recall-commands))
-  (unless recall--command
-    (user-error "Unable find connection with log file %s in `recall-commands'"
+  (setq recall--item
+        (cl-find-if (lambda (item)
+                      (equal (recall--log-file item) buffer-file-name))
+                    recall-items))
+  (unless recall--item
+    (user-error "Unable find connection with log file %s in `recall-items'"
                 buffer-file-name))
   (unless (file-exists-p buffer-file-name)
     (let ((inhibit-read-only t))
@@ -450,7 +451,7 @@ If COMMANDS is non nil display all commands."
                   (apply 'max (mapcar (lambda (x) (length (car x)))
                                       recall-format-alist))
                   for (name . accessor) in recall-format-alist
-                  for value = (funcall accessor recall--command)
+                  for value = (funcall accessor recall--item)
                   when value concat
                   (format (format "%%%ds: %%s\n" max-length) name value)
                   into before-string
@@ -459,10 +460,10 @@ If COMMANDS is non nil display all commands."
                                       'face 'recall-log-overlay-face)
                           "\n"))))
   (setq buffer-file-name nil
-        default-directory (recall--command-directory recall--command)
+        default-directory (recall--item-directory recall--item)
         mode-line-buffer-identification
         (append mode-line-buffer-identification
-                (list (format " {%s}" (recall--command-string recall--command)))))
+                (list (format " {%s}" (recall--item-command recall--item)))))
   (let ((inhibit-read-only t))
     (run-hooks 'recall--log-filter-functions)))
 
@@ -473,50 +474,50 @@ If COMMANDS is non nil display all commands."
 
 
 ;;; Complete
-(defun recall--collection (&optional commands)
+(defun recall--collection (&optional items)
   (let ((string-count (make-hash-table :test 'equal))
         (string-unique-p (make-hash-table :test 'equal)))
-    (cl-loop for command in recall-commands
-             for string = (recall--command-string command)
-             do (puthash string (1+ (gethash string string-count 0))
+    (cl-loop for item in recall-items
+             for command = (recall--item-command item)
+             do (puthash command (1+ (gethash command string-count 0))
                          string-count)
-             do (puthash string (eq (gethash string string-unique-p 'not-found)
-                                    'not-found)
+             do (puthash command (eq (gethash command string-unique-p 'not-found)
+                                     'not-found)
                          string-unique-p))
-    (cl-loop with commands = (or commands recall-commands)
-             for command in commands
-             for string = (recall--command-string command)
-             for count = (puthash string (1- (gethash string string-count))
+    (cl-loop with items = (or items recall-items)
+             for item in items
+             for command = (recall--item-command item)
+             for count = (puthash command (1- (gethash command string-count))
                                   string-count)
-             collect (cons (concat string
-                                   (unless (gethash string string-unique-p)
+             collect (cons (concat command
+                                   (unless (gethash command string-unique-p)
                                      (propertize (format "<%d>" count)
                                                  'face 'shadow)))
-                           command))))
+                           item))))
 
 (defun recall--make-annotation (alist)
   (lambda (candidate)
-    (let ((command (cdr (assoc candidate alist 'string-equal))))
+    (let ((item (cdr (assoc candidate alist 'string-equal))))
       ;; HACK Use `tabulated-list-mode' to create annotation
       (with-temp-buffer
         (tabulated-list-mode)
         (setq tabulated-list-format recall-list-format)
-        (let ((command (copy-tree command)))
-          (setf (recall--command-string command) "")
-          (setq-local recall-commands (list command)))
+        (let ((item (copy-tree item)))
+          (setf (recall--item-command item) "")
+          (setq-local recall-items (list item)))
         (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t)
         (revert-buffer)
         (string-trim-right (buffer-string))))))
 
 (defun recall-completing-read (prompt &optional predicate)
-  "Read a string in the minibuffer, with completion.
-PROMPT is a string to prompt with; normally it ends in a colon and
-a space.  PREDICATE is an optional function taking the command string
-and `recall--command'.
-Completes from collection based on `recall-commands'."
+  "Read a command string in the minibuffer, with completion.
+PROMPT is a command to prompt with; normally it ends in a colon and
+a space.  PREDICATE is an optional function taking the item command
+and `recall--item'.
+Completes from collection based on `recall-items'."
   (let* ((alist (recall--collection))
          (collection
-          (lambda (string predicate action)
+          (lambda (command predicate action)
             (cond
              ((eq action 'metadata)
               `(metadata
@@ -524,7 +525,7 @@ Completes from collection based on `recall-commands'."
                 (annotation-function . ,(recall--make-annotation alist))
                 (display-sort-function . identity)))
              (t
-              (complete-with-action action alist string predicate)))))
+              (complete-with-action action alist command predicate)))))
          ;; Properties are added in `recall--collection'.
          ;; Therefore we need the properties intact to get `equal' to
          ;; match in `assoc'.
@@ -532,9 +533,9 @@ Completes from collection based on `recall-commands'."
     (cdr (assoc (completing-read prompt collection predicate t) alist))))
 
 
-;;; Commands
+;;; Items
 (defun recall-save ()
-  "Prune and save `recall-commands'.
+  "Prune and save `recall-items'.
 The history is save to `recall-save-file'.
 See `recall-prune-keep-unique' and `recall-prune-after'
 for pruning options."
@@ -550,17 +551,17 @@ for pruning options."
 	  (print-level nil)
 	  (print-quoted t))
       (prin1
-       `(setq recall-commands
-	      ',(mapcar (lambda (command)
+       `(setq recall-items
+	      ',(mapcar (lambda (item)
                           ;; Some cleanup
-                          (unless (numberp (recall--command-exit-code command))
-                            (setf (recall--command-exit-code command) -1))
-                          (unless (recall--command-end-time command)
-                            (setf (recall--command-end-time command) (current-time)))
-                          ;; Drop `process' from command
-                          (take (1- (length (cl-struct-slot-info 'recall--command)))
-                                command))
-                        recall-commands))
+                          (unless (numberp (recall--item-exit-code item))
+                            (setf (recall--item-exit-code item) -1))
+                          (unless (recall--item-end-time item)
+                            (setf (recall--item-end-time item) (current-time)))
+                          ;; Drop `process' from item
+                          (take (1- (length (cl-struct-slot-info 'recall--item)))
+                                item))
+                        recall-items))
        (current-buffer)))
     ;; Write to `recall-save-file'
     (let ((file-precious-flag t)
@@ -571,36 +572,36 @@ for pruning options."
       (write-region (point-min) (point-max) recall-save-file nil
 		    (unless (called-interactively-p 'interactive) 'quiet)))))
 
-(defun recall-find-log (command)
-  "View log for COMMAND."
+(defun recall-find-log (item)
+  "View log for ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "View log: ")))
   (if-let ((buffer
-            (cl-find command
+            (cl-find item
                      (buffer-list)
                      :key (lambda (buffer)
-                            (with-current-buffer buffer recall--command)))))
+                            (with-current-buffer buffer recall--item)))))
       (pop-to-buffer buffer)
-    (find-file (recall--log-file command))
+    (find-file (recall--log-file item))
     (recall-log-mode)))
 
 (recall--def-do-command recall-do-find-log recall-find-log
-  "View log for this command.")
+  "View log for this item.")
 
-(defun recall-buffer (command)
-  "View buffer for COMMAND."
+(defun recall-buffer (item)
+  "View buffer for ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "View process buffer: ")))
-  (let ((process (recall--command-process command)) buffer)
+  (let ((process (recall--item-process item)) buffer)
     (unless (processp process)
-      (user-error "No process associated with `command'"))
+      (user-error "No process associated with `item'"))
     (setq buffer (process-buffer process))
     (unless (and (bufferp buffer) (buffer-live-p buffer))
       (user-error "Buffer killed"))
     (cl-loop
-     for command in recall-commands
-     until (eq command command)
-     for other-process = (recall--command-process command)
+     for item in recall-items
+     until (eq item item)
+     for other-process = (recall--item-process item)
      when (and (processp other-process)
                (eq (process-buffer other-process)
                    buffer))
@@ -608,75 +609,75 @@ for pruning options."
     (pop-to-buffer buffer)))
 
 (recall--def-do-command recall-do-buffer recall-buffer
-  "View buffer for this command.")
+  "View buffer for this item.")
 
-(defun recall-rerun (command)
-  "Rerun COMMAND."
+(defun recall-rerun (item)
+  "Rerun command ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "Rerun command: ")))
-  (let ((default-directory (recall--command-directory command))
-        (string (recall--command-string command))
-        (recall--parent-condition (recall--command-condition command)))
+  (let ((default-directory (recall--item-directory item))
+        (command (recall--item-command item))
+        (recall--parent-condition (recall--item-condition item)))
     (funcall (cdr (or (assoc recall--parent-condition recall-rerun-alist)
                       (assoc nil recall-rerun-alist)))
-             string)
-    (message "Running %S" string)))
+             command)
+    (message "Running %S" command)))
 
 (recall--def-do-command recall-do-rerun recall-rerun
-  "Rerun this command.")
+  "Rerun this item.")
 
-(defun recall-rerun-edit (command)
-  "Edit and rerun COMMAND."
+(defun recall-rerun-edit (item)
+  "Edit and rerun command ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "Rerun edit command: ")))
-  (let ((default-directory (recall--command-directory command))
-        (string (recall--command-string command))
-        (recall--parent-condition (recall--command-condition command)))
+  (let ((default-directory (recall--item-directory item))
+        (command (recall--item-command item))
+        (recall--parent-condition (recall--item-condition item)))
     (minibuffer-with-setup-hook
         (lambda ()
           (delete-region (minibuffer-prompt-end) (point-max))
-          (insert string))
+          (insert command))
       (call-interactively (cdr (or (assoc recall--parent-condition recall-rerun-alist)
                                    (assoc nil recall-rerun-alist)))
-                          string))))
+                          command))))
 
 (recall--def-do-command recall-do-rerun-edit recall-rerun-edit
-  "Edit and rerun this command.")
+  "Edit and rerun this command item.")
 
-(defun recall-process-kill (command)
-  "Kill COMMANDs process."
+(defun recall-process-kill (item)
+  "Kill process of command ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "Kill process: "
-                  (pcase-lambda (`(_ . ,command))
-                    (ignore-errors (process-live-p (recall--command-process command)))))))
-  (let ((process (recall--command-process command)))
+                  (pcase-lambda (`(_ . ,item))
+                    (ignore-errors (process-live-p (recall--item-process item)))))))
+  (let ((process (recall--item-process item)))
     (unless process
-      (user-error "Current history command does not have an live process"))
+      (user-error "Current history item does not have an live process"))
     (kill-process process)))
 
 (recall--def-do-command recall-do-process-kill recall-process-kill
-  "Kill the process of this command.")
+  "Kill the process of this item.")
 
-(defun recall-copy-as-kill-command (command)
-  "Copy the command string of COMMAND."
+(defun recall-copy-as-kill-command (item)
+  "Copy the command string of command ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "Copy command: ")))
-  (kill-new (recall--command-string command)))
+  (kill-new (recall--item-command item)))
 
 (recall--def-do-command recall-do-copy-as-kill-command recall-copy-as-kill-command
-  "Copy as kill the command string of this command.")
+  "Copy as kill the command string of this command item.")
 
-(defun recall-delete (command)
-  "Delete COMMAND."
+(defun recall-delete (item)
+  "Delete command ITEM from `recall-items'."
   (interactive
    (list (funcall recall-completing-read-fn "Delete history: ")))
   (when (or (not (called-interactively-p 'all))
             (yes-or-no-p "Are you sure you want to delete command?"))
-    (delete-file (recall--log-file command))
-    (setq recall-commands (delq command recall-commands))))
+    (delete-file (recall--log-file item))
+    (setq recall-items (delq item recall-items))))
 
 (recall--def-do-command recall-do-delete recall-delete
-  "Remove this command from `recall-commands'.")
+  "Delete this command item from `recall-items'.")
 
 
 ;;; Embark integration
@@ -720,12 +721,12 @@ for pruning options."
 (declare-function consult--multi "consult" (sources &rest options))
 
 (defun recall-consult-completing-read (prompt &optional predicate)
-  "Read a string in the minibuffer, with completion.
-PROMPT is a string to prompt with; normally it ends in a colon and a
+  "Read a command string in the minibuffer, with completion.
+PROMPT is a command to prompt with; normally it ends in a colon and a
 space.
-PREDICATE is an optional function taking command string and
-`recall--command'.
-Completes from collection based on `recall-commands'."
+PREDICATE is an optional function taking item command and
+`recall--item'.
+Completes from collection based on `recall-items'."
   (let* ((alist
           (cl-remove-if-not (or predicate 'identity) (recall--collection)))
          (annotate-fn-1
@@ -739,33 +740,33 @@ Completes from collection based on `recall-commands'."
          (sources
           `(( :name "Active" :narrow ?a :items
               ,(lambda ()
-                 (cl-loop for (str . command) in alist
-                          unless (recall--command-exit-code command)
+                 (cl-loop for (str . item) in alist
+                          unless (recall--item-exit-code item)
                           collect str)))
             ( :name "Exited" :narrow ?e :items
               ,(lambda ()
-                 (cl-loop for (str . command) in alist
-                          when (recall--command-exit-code command)
+                 (cl-loop for (str . item) in alist
+                          when (recall--item-exit-code item)
                           collect str)))
             ( :name "Unique" :narrow ?u :hidden t :items
               ,(lambda ()
                  (cl-loop with table = (make-hash-table :test 'equal)
-                          for (str . command) in alist
-                          for key = (cons (recall--command-string command)
-                                          (recall--command-directory command))
+                          for (str . item) in alist
+                          for key = (cons (recall--item-command item)
+                                          (recall--item-directory item))
                           unless (gethash key table) collect
                           str and do (puthash key t table))))
             ( :name "Project" :narrow ?p :hidden t :items
               ,(lambda ()
                  (when-let* ((root (consult--project-root))
                              (root (abbreviate-file-name root)))
-                   (cl-loop for (str . command) in alist
-                            when (equal root (recall--command-directory command))
+                   (cl-loop for (str . item) in alist
+                            when (equal root (recall--item-directory item))
                             collect str))))
             ( :name ,(format "Directory (%s)" directory) :narrow ?d :hidden t :items
               ,(lambda ()
-                 (cl-loop for (str . command) in alist
-                          when (equal directory (recall--command-directory command))
+                 (cl-loop for (str . item) in alist
+                          when (equal directory (recall--item-directory item))
                           collect str)))))
          (sources
           (cl-loop for source in sources collect
@@ -785,7 +786,7 @@ Completes from collection based on `recall-commands'."
 
 ;;;###autoload
 (define-minor-mode recall-mode
-  "Extensive history for processes."
+  "Recall Emacs subprocesses."
   :global t
   (if recall-mode
       (progn
@@ -793,8 +794,7 @@ Completes from collection based on `recall-commands'."
         (advice-add 'set-process-filter :around 'recall--set-process-filter)
         (advice-add 'set-process-sentinel :around 'recall--set-process-sentinel)
         (add-hook 'kill-emacs-hook 'recall-save)
-        (when (and (file-exists-p recall-save-file)
-                   (not recall-commands))
+        (when (and (file-exists-p recall-save-file) (not recall-items))
           (load recall-save-file t)))
     (advice-remove 'make-process 'recall--make-process)
     (advice-remove 'set-process-filter 'recall--set-process-filter)
