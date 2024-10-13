@@ -811,3 +811,7 @@ Completes from collection based on `recall-commands'."
 
 (provide 'recall)
 ;;; recall.el ends here
+
+;; Local Variables:
+;; checkdoc-force-docstrings-flag: nil
+;; End:
