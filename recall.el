@@ -423,7 +423,7 @@ If ITEMS is non nil display all processes."
   "w" #'recall-do-copy-as-kill-command
   "d" #'recall-do-delete)
 
-(define-derived-mode recall-log-mode special-mode "Log"
+(define-derived-mode recall-log-mode special-mode "Recall Command Log"
   "Mode active in `recall' log files."
   :interactive nil
   ;; TODO Auto revert overlay info
