@@ -103,8 +103,7 @@ See `time-stamp-format'."
   :type 'string)
 
 (defcustom recall-format-alist
-  '(("Command"   . recall--command-string)
-    ("RC"        . (lambda (command)
+  '(("RC"        . (lambda (command)
                      (when-let ((code (recall--command-exit-code command)))
                        (propertize
                         (format "%s" code) 'face
@@ -361,14 +360,16 @@ See `recall-completing-read'."
 (defvar-local recall-list-commands nil)
 
 (defun recall--list-refresh ()
-  (setq tabulated-list-entries
-        (cl-loop for command in (or recall-list-commands recall-commands)
-                 for desc =
-                 (cl-loop for (col) across tabulated-list-format
-                          for fn = (cdr (assoc col recall-format-alist))
-                          collect (or (funcall fn command) "--") into desc
-                          finally return (apply 'vector desc))
-                 collect (list command desc))))
+  (cl-loop for (name . command) in (recall--collection recall-list-commands)
+           for desc =
+           (cl-loop for (col) across tabulated-list-format collect
+                    (cond ((equal col "Command") name)
+                          ((funcall (cdr (assoc col recall-format-alist)) command))
+                          (t "--"))
+                    into desc finally return (apply 'vector desc))
+           collect (list command desc) into entries
+           finally do
+           (setq tabulated-list-entries entries)))
 
 (defvar-keymap recall-list-mode-map
   :doc "Local keymap for `recall-list-mode' buffers."
@@ -470,7 +471,7 @@ If COMMANDS is non nil display all commands."
 
 
 ;;; Complete
-(defun recall--collection ()
+(defun recall--collection (&optional commands)
   (let ((string-count (make-hash-table :test 'equal))
         (string-unique-p (make-hash-table :test 'equal)))
     (cl-loop for command in recall-commands
@@ -480,7 +481,8 @@ If COMMANDS is non nil display all commands."
              do (puthash string (eq (gethash string string-unique-p 'not-found)
                                   'not-found)
                          string-unique-p))
-    (cl-loop for command in recall-commands
+    (cl-loop with commands = (or commands recall-commands)
+             for command in commands
              for string = (recall--command-string command)
              for count = (puthash string (1- (gethash string string-count))
                                   string-count)
@@ -688,6 +690,7 @@ for pruning options."
 (defvar embark-general-map)
 (defvar embark-keymap-alist)
 (defvar embark-exporters-alist)
+(defvar embark-target-finders)
 
 (defvar-keymap embark-recall-actions-map
   :doc "Recall actions"
@@ -709,6 +712,14 @@ for pruning options."
                          candidates))))
 
 (add-to-list 'embark-exporters-alist '(recall . recall-export))
+
+(defun recall-embark-target-finder ()
+  (when (derived-mode-p 'recall-list-mode)
+    `(recall ,(aref (tabulated-list-get-entry) 0)
+             ,(line-beginning-position)
+             . ,(1- (line-beginning-position 2)))))
+
+(add-to-list 'embark-target-finders #'recall-embark-target-finder)
 
 
 ;;; Consult integration
