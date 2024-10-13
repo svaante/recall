@@ -2,13 +2,14 @@
 #+author: Daniel Pettersson
 #+language: en
 
-This package =advice-add=s =make-process= and friends to store metadata like; working directory, stdout, start time, end time, exit code and version control revision for Emacs processes.
-
-It defines commands to view and manage both currently running processes and historical processes, accessible via the minibuffer and/or a specialized =tabulated-list= buffer.
+This package uses =add-advice= on =make-process= and friends to store
+metadata like; working directory, stdout, start time, end time, exit
+code and version control revision for Emacs processes.  It defines
+commands to view and manage both currently running processes and
+historical processes, accessible via the minibuffer and/or a
+specialized =tabulated-list= buffer.
 
 Joining the functionality of bash reverse-i-search with =proced=.
-
-Enable process surveillance with =recall-mode=.
 
 Includes integration with =embark= and =consult=.
 
@@ -22,10 +23,13 @@ Includes integration with =embark= and =consult=.
     ;; Or if minibuffer completion is your preferable interface
     ;; ("C-x C-r" . recall-rerun)
     :config
+    ;; Enable process surveillance
     (recall-mode))
 #+end_src
 
 * Note
-As this package advices core functionality, usage might have unintended consequences.  Disable =recall-mode= at the first signs of process spawning troubles.
+As this package advices core Emacs functionality, usage might have
+unintended consequences.  Disable =recall-mode= at the first signs of
+process spawning troubles.
 
 Package is inspired by detached.el
