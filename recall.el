@@ -573,7 +573,7 @@ for pruning options."
 		    (unless (called-interactively-p 'interactive) 'quiet)))))
 
 (defun recall-find-log (item)
-  "View log for ITEM."
+  "View log for command ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "View log: ")))
   (if-let ((buffer
@@ -586,10 +586,10 @@ for pruning options."
     (recall-log-mode)))
 
 (recall--def-do-command recall-do-find-log recall-find-log
-  "View log for this item.")
+  "View log for this command item.")
 
 (defun recall-buffer (item)
-  "View buffer for ITEM."
+  "View buffer for command ITEM."
   (interactive
    (list (funcall recall-completing-read-fn "View process buffer: ")))
   (let ((process (recall--item-process item)) buffer)
@@ -624,7 +624,7 @@ for pruning options."
     (message "Running %S" command)))
 
 (recall--def-do-command recall-do-rerun recall-rerun
-  "Rerun this item.")
+  "Rerun this command item.")
 
 (defun recall-rerun-edit (item)
   "Edit and rerun command ITEM."
@@ -656,7 +656,7 @@ for pruning options."
     (kill-process process)))
 
 (recall--def-do-command recall-do-process-kill recall-process-kill
-  "Kill the process of this item.")
+  "Kill the process of this command item.")
 
 (defun recall-copy-as-kill-command (item)
   "Copy the command string of command ITEM."
