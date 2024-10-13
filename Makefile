@@ -1,9 +1,6 @@
 export EMACS ?= $(shell which emacs)
 
-ELFILES = \
-	process-history.el \
-	extensions/process-history-consult.el \
-	extensions/process-history-embark.el
+ELFILES = recall.el
 
 ELCFILES = $(addsuffix .elc, $(basename $(ELFILES)))
 
