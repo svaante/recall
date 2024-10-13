@@ -256,11 +256,12 @@ See `recall-completing-read'."
   (declare (indent 2))
   `(defun ,name ()
      ,doc
-     (interactive)
+     (interactive nil recall-list-mode recall-log-mode)
      (let ((command
             (pcase major-mode
               ('recall-list-mode (tabulated-list-get-id))
-              ('recall-log-mode recall--command))))
+              ('recall-log-mode recall--command)
+              (_ (user-error "Expects `recall-list-mode' or `recall-log-mode'")))))
        (when (eq major-mode 'recall-list-mode)
          (forward-line))
        (,base-command command))))
