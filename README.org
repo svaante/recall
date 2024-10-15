@@ -39,3 +39,11 @@ unintended consequences.  Disable =recall-mode= at the first signs of
 process spawning troubles.
 
 Package is inspired by detached.el
+
+* Screenshots
+=recall-list=
+[[https://raw.githubusercontent.com/svaante/recall/resources/recall-list-mode.png]]
+=recall-find-log=
+[[https://raw.githubusercontent.com/svaante/recall/resources/recall-log-mode.png]]
+=recall-run= with =consult=
+[[https://raw.githubusercontent.com/svaante/recall/resources/recall-completing-read.png]]
