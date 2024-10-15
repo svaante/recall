@@ -41,9 +41,9 @@ process spawning troubles.
 Package is inspired by detached.el
 
 * Screenshots
-=recall-list=
+=recall-list=:
 [[https://raw.githubusercontent.com/svaante/recall/resources/recall-list-mode.png]]
-=recall-find-log=
+=recall-find-log=:
 [[https://raw.githubusercontent.com/svaante/recall/resources/recall-log-mode.png]]
-=recall-rerun= with =consult=
+=recall-rerun= with =consult=:
 [[https://raw.githubusercontent.com/svaante/recall/resources/recall-completing-read.png]]
