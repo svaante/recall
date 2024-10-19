@@ -718,6 +718,7 @@ for pruning options."
 
 ;;; Consult integration
 (defvar consult--annotate-align-width)
+(defvar consult--annotate-align-step)
 (declare-function consult--project-root "consult" ())
 (declare-function consult--multi "consult" (sources &rest options))
 
@@ -735,7 +736,8 @@ Completes from collection based on `recall-items'."
          (annotate-fn (lambda (cand)
                         ;; HACK Don't slide annotations of the edge of
                         ;; the world because of one long string.
-                        (setq consult--annotate-align-width 0)
+                        (setq consult--annotate-align-width 0
+                              consult--annotate-align-step 1)
                         (funcall annotate-fn-1 cand)))
          (directory (abbreviate-file-name default-directory))
          (sources
