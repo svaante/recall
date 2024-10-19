@@ -47,3 +47,7 @@ Package is inspired by detached.el
 [[https://raw.githubusercontent.com/svaante/recall/resources/recall-log-mode.png]]
 =recall-rerun= with =consult=:
 [[https://raw.githubusercontent.com/svaante/recall/resources/recall-completing-read.png]]
+
+* See Also
+- [[https://git.sr.ht/~niklaseklund/detached.el][detached.el]] - Launch, and manage, detached processes
+- [[https://codeberg.org/mekeor/consult-sh][consult-sh]] - Consulting async-shell-command
