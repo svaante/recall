@@ -169,7 +169,7 @@ See `recall-completing-read'."
   "Face used in Directory column.")
 
 (defface recall-time-face
-  '((t :inherit diary-time))
+  '((t :inherit font-lock-doc-face))
   "Face used to highlight time.")
 
 (defface recall-success-face
