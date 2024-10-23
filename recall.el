@@ -497,25 +497,20 @@ If ITEMS is non nil display all processes."
                            item))))
 
 (defun recall--make-affixation (alist)
-  (let ((max-length
-         (cl-loop for (name length) across recall-list-format
-                  when (equal "Command" name) return length)))
-    (lambda (candidates)
-      (cl-loop
-       for candidate in candidates
-       for (_ . item) = (assoc candidate alist 'string-equal) collect
-       `(,(truncate-string-to-width candidate max-length nil nil t)
-         ""
-         ;; HACK Use `tabulated-list-mode' to create annotation
-         ,(with-temp-buffer
-            (tabulated-list-mode)
-            (setq tabulated-list-format recall-list-format)
-            (let ((item (copy-tree item)))
-              (setf (recall--item-command item) "")
-              (setq-local recall-items (list item)))
-            (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t)
-            (revert-buffer)
-            (string-trim-right (buffer-string))))))))
+  (lambda (candidates)
+    (cl-loop
+     for candidate in candidates
+     for (_ . item) = (assoc candidate alist 'string-equal) collect
+     `("" ""
+       ;; HACK Use `tabulated-list-mode' to create annotation
+       ,(with-temp-buffer
+          (tabulated-list-mode)
+          (setq tabulated-list-format recall-list-format)
+          (let ((item (copy-tree item)))
+            (setq-local recall-items (list item)))
+          (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t)
+          (revert-buffer)
+          (string-trim-right (buffer-string)))))))
 
 (defun recall-completing-read (prompt &optional predicate)
   "Read a command string in the minibuffer, with completion.
