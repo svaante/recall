@@ -496,19 +496,26 @@ If ITEMS is non nil display all processes."
                                                  'face 'shadow)))
                            item))))
 
-(defun recall--make-annotation (alist)
-  (lambda (candidate)
-    (let ((item (cdr (assoc candidate alist 'string-equal))))
-      ;; HACK Use `tabulated-list-mode' to create annotation
-      (with-temp-buffer
-        (tabulated-list-mode)
-        (setq tabulated-list-format recall-list-format)
-        (let ((item (copy-tree item)))
-          (setf (recall--item-command item) "")
-          (setq-local recall-items (list item)))
-        (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t)
-        (revert-buffer)
-        (string-trim-right (buffer-string))))))
+(defun recall--make-affixation (alist)
+  (let ((max-length
+         (cl-loop for (name length) across recall-list-format
+                  when (equal "Command" name) return length)))
+    (lambda (candidates)
+      (cl-loop
+       for candidate in candidates
+       for (_ . item) = (assoc candidate alist 'string-equal) collect
+       `(,(truncate-string-to-width candidate max-length nil nil t)
+         ""
+         ;; HACK Use `tabulated-list-mode' to create annotation
+         ,(with-temp-buffer
+            (tabulated-list-mode)
+            (setq tabulated-list-format recall-list-format)
+            (let ((item (copy-tree item)))
+              (setf (recall--item-command item) "")
+              (setq-local recall-items (list item)))
+            (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t)
+            (revert-buffer)
+            (string-trim-right (buffer-string))))))))
 
 (defun recall-completing-read (prompt &optional predicate)
   "Read a command string in the minibuffer, with completion.
@@ -523,7 +530,7 @@ Completes from collection based on `recall-items'."
              ((eq action 'metadata)
               `(metadata
                 (category . recall)
-                (annotation-function . ,(recall--make-annotation alist))
+                (affixation-function . ,(recall--make-affixation alist))
                 (display-sort-function . identity)))
              (t
               (complete-with-action action alist command predicate)))))
@@ -721,6 +728,8 @@ for pruning options."
 (defvar consult--annotate-align-step)
 (declare-function consult--project-root "consult" ())
 (declare-function consult--multi "consult" (sources &rest options))
+(declare-function consult--multi-enabled-sources "consult" (sources))
+(declare-function consult--multi-group "consult" (sources cand transform))
 
 (defun recall-consult-completing-read (prompt &optional predicate)
   "Read a command string in the minibuffer, with completion.
@@ -731,14 +740,6 @@ PREDICATE is an optional function taking item command and
 Completes from collection based on `recall-items'."
   (let* ((alist
           (cl-remove-if-not (or predicate 'identity) (recall--collection)))
-         (annotate-fn-1
-          (recall--make-annotation alist))
-         (annotate-fn (lambda (cand)
-                        ;; HACK Don't slide annotations of the edge of
-                        ;; the world because of one long string.
-                        (setq consult--annotate-align-width 0
-                              consult--annotate-align-step 1)
-                        (funcall annotate-fn-1 cand)))
          (directory (abbreviate-file-name default-directory))
          (sources
           `(( :name "Active" :narrow ?a :items
@@ -773,9 +774,24 @@ Completes from collection based on `recall-items'."
                           collect str)))))
          (sources
           (cl-loop for source in sources collect
-                   (append source
-                           `(:category recall :annotate ,annotate-fn))))
+                   (append source `(:category recall))))
+         ;; HACK reaching into consult internals to group + affixation
+         ;; to work
+         (vsources (consult--multi-enabled-sources sources))
+         (affixation-fn-1 (recall--make-affixation alist))
+         (affixation-fn
+          (lambda (cand)
+            ;; ugh
+            (thread-last cand (get-text-property 0 'multi-category)
+                         cdr list (funcall affixation-fn-1) car)))
+         (group-fn (lambda (cand transform)
+                     (if transform
+                         (car (funcall affixation-fn cand))
+                       (consult--multi-group
+                        vsources cand transform))))
          (match (car (consult--multi sources
+                                     :group group-fn
+                                     :annotate affixation-fn
                                      :prompt prompt
                                      :require-match t
                                      :sort nil))))
