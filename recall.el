@@ -151,7 +151,7 @@ return string."
                                ("Start" 12 t :right-align t)
                                ("VC" 8 t)
                                ("Buffer" 25 t)
-                               ("PID" 8 t)]
+                               ("PID" 5 t)]
   "See `tabulated-list-format'.
 Each NAME needs to exist in `recall-format-alist' to be
 displayed correctly."
