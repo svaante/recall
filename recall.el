@@ -375,7 +375,7 @@ See `recall-completing-read'."
                     (cond ((equal col "Command") name)
                           ((funcall (cdr (assoc col recall-format-alist)) item))
                           (t "--"))
-                    into desc finally return (apply 'vector desc))
+                    into desc finally return (apply #'vector desc))
            collect (list item desc) into entries
            finally do
            (setq tabulated-list-entries entries)))
@@ -403,7 +403,7 @@ See `recall-completing-read'."
   (setq tabulated-list-use-header-line t
         tabulated-list-format recall-list-format)
   (tabulated-list-init-header)
-  (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t))
+  (add-hook 'tabulated-list-revert-hook #'recall--list-refresh nil t))
 
 ;;;###autoload
 (defun recall-list (&optional items)
@@ -448,7 +448,7 @@ If ITEMS is non nil display all processes."
                             'face 'warning)))))
   (let ((before-string
          (cl-loop with max-length =
-                  (apply 'max (mapcar (lambda (x) (length (car x)))
+                  (apply #'max (mapcar (lambda (x) (length (car x)))
                                       recall-format-alist))
                   for (name . accessor) in
                   (cons '("Command" . recall--item-command) recall-format-alist)
@@ -515,7 +515,7 @@ If ITEMS is non nil display all processes."
           (setq tabulated-list-format recall-list-format)
           (let ((item (copy-tree item)))
             (setq-local recall-items (list item)))
-          (add-hook 'tabulated-list-revert-hook 'recall--list-refresh nil t)
+          (add-hook 'tabulated-list-revert-hook #'recall--list-refresh nil t)
           (revert-buffer)
           (string-trim-right (buffer-string)))))))
 
