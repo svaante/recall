@@ -30,9 +30,11 @@ Enable global mode =recall-mode= to start processes monitoring.
     ("C-x C-r" . recall-list)
     ;; Or if minibuffer completion is your preferable interface
     ("C-x C-r" . recall-rerun)
-    :config
+    :custom
+    ;; Consult completion based interface
+    ;; (recall-completing-read-fn #'recall-consult-completing-read)
     ;; Enable process surveillance
-    (recall-mode))
+    (recall-mode +1))
 #+end_src
 
 * Note

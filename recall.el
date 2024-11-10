@@ -798,9 +798,6 @@ Completes from collection based on `recall-items'."
                                      :sort nil))))
     (alist-get match alist nil nil 'equal)))
 
-(with-eval-after-load 'consult
-  (setq recall-completing-read-fn #'recall-consult-completing-read))
-
 
 ;;; Mode
 
