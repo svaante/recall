@@ -426,9 +426,9 @@ If ITEMS is non nil display all processes."
 
 (defvar-keymap recall-log-mode-map
   :doc "Local keymap for `recall-mode' buffers."
-  "r" #'recall-do-rerun
-  "w" #'recall-do-copy-as-kill-command
-  "d" #'recall-do-delete)
+  "C-c r" #'recall-do-rerun
+  "C-c w" #'recall-do-copy-as-kill-command
+  "C-c d" #'recall-do-delete)
 
 (define-derived-mode recall-log-mode special-mode "Recall Command Log"
   "Mode active in `recall' log files."
