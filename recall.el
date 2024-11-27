@@ -169,6 +169,10 @@ displayed correctly."
 See `recall-completing-read'."
   :type 'function)
 
+(defcustom recall-process-exit-hook nil
+  "Hook called with `recall--item' when process exits."
+  :type '(repeat function))
+
 
 ;;; Faces
 (defface recall-directory-face
@@ -362,7 +366,8 @@ See `recall-completing-read'."
           (setf (recall--item-end-time item)
                 (current-time)
                 (recall--item-exit-code item)
-                (process-exit-status proc)))))))
+                (process-exit-status proc))
+          (run-hook-with-args 'recall-process-exit-hook item))))))
 
 
 ;;; List
