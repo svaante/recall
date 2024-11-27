@@ -454,7 +454,7 @@ If ITEMS is non nil display all processes."
   (let ((before-string
          (cl-loop with max-length =
                   (apply #'max (mapcar (lambda (x) (length (car x)))
-                                      recall-format-alist))
+                                       recall-format-alist))
                   for (name . accessor) in
                   (cons '("Command" . recall--item-command) recall-format-alist)
                   for value = (funcall accessor recall--item)
