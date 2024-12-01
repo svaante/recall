@@ -538,6 +538,7 @@ Completes from collection based on `recall-items'."
               `(metadata
                 (category . recall)
                 (affixation-function . ,(recall--make-affixation alist))
+                (cycle-sort-function . identity)
                 (display-sort-function . identity)))
              (t
               (complete-with-action action alist command predicate)))))
