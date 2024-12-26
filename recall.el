@@ -85,15 +85,14 @@
                                  ,(regexp-quote shell-command-buffer-name-async))
   "Record processes spawned in matching buffers.
 See `buffer-match-p'."
-  :type '(repeat (choice :tag "Condition"
-			 regexp
-			 (function :tag "Matcher function"))))
+  :type '(repeat (choice (regexp :tag "Condition")
+                         (function :tag "Matcher function"))))
 
 (defcustom recall-rerun-alist '((nil . async-shell-command)
                                 ((major-mode . compilation-mode) . compile))
   "Rerun item from ALIST specification (CONDITION . FN).
-Where condition is either an item in `recall-buffer-match',
-`recall-this-command' or nil for anything else."
+Where CONDITION is either an KEY in `recall-buffer-match',
+`recall-this-command' or nil for matching anything else."
   :type 'alist)
 
 (defcustom recall-prune-after (* 60 60 24 7 2) ;; two weeks
