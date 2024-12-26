@@ -2,6 +2,8 @@
 #+author: Daniel Pettersson
 #+language: en
 
+[[https://melpa.org/#/recall][https://melpa.org/packages/recall-badge.svg]]
+
 Recall and rerun processes created by the likes of =eshell=,
 =async-shell-command=, =compile= and =dired-do-async-shell-command=.
 
@@ -24,7 +26,7 @@ Enable global mode =recall-mode= to start processes monitoring.
 * Configuration
 #+begin_src emacs-lisp
   (use-package recall
-    :vc (:url "https://github.com/svaante/recall")
+    :ensure t
     :bind
     ;; Note: This binding overrides default binding for `find-file-read-only'
     ("C-x C-r" . recall-list)
