@@ -88,6 +88,26 @@ See `buffer-match-p'."
   :type '(repeat (choice (regexp :tag "Condition")
                          (function :tag "Matcher function"))))
 
+(defcustom recall-command-format-alist
+  '(( nil .
+      (lambda (command)
+        (thread-first
+          (if (equal (nth 1 command) shell-command-switch)
+              (nthcdr 2 command)
+            command)
+          (string-join " ")
+          (string-trim))))
+    ( (major-mode . eshell-mode) .
+      (lambda (_)
+        (buffer-substring-no-properties eshell-last-input-start
+                                        (1- eshell-last-input-end)))))
+  "Format command string from ALIST specification (CONDITION . FN).
+FN is called with keyword argument COMMAND from `make-process' and should
+return command string.  Where CONDITION is either an KEY in
+`recall-buffer-match', `recall-this-command' or nil for matching
+anything else."
+  :type 'alist)
+
 (defcustom recall-rerun-alist '((nil . async-shell-command)
                                 ((major-mode . compilation-mode) . compile))
   "Rerun item from ALIST specification (CONDITION . FN).
@@ -214,16 +234,6 @@ See `recall-completing-read'."
 
 
 ;;; Utils
-(defun recall--item-to-string (item)
-  ;; HACK Prettier paths in `eshell-mode'
-  (if (eq this-command 'eshell-send-input)
-      (buffer-substring-no-properties eshell-last-input-start
-                                      (1- eshell-last-input-end))
-    (string-trim
-     (string-join (if (equal (nth 1 item) shell-command-switch)
-                      (nthcdr 2 item)
-                    item)
-                  " "))))
 
 (defun recall--log-file (item)
   (thread-last (recall--item-start-time item)
@@ -289,30 +299,33 @@ See `recall-completing-read'."
        ;; Handle tramp process
        (or (not (equal signal-hook-function 'tramp-signal-hook-function))
            (plist-get args :file-handler))
-       (setq command (recall--item-to-string (plist-get args :command))
-             directory (or (plist-get args :directory) default-directory)
+       (setq directory (or (plist-get args :directory) default-directory)
              buffer (let ((buffer (plist-get args :buffer)))
                       (pcase buffer
                         ((pred bufferp) buffer)
                         ((pred stringp) (get-buffer buffer))
                         (_ (current-buffer)))))
-       ;; Skip empty items
-       (not (string-empty-p command))
        ;; Check condition
        (setq condition
-             ;; Using stack scoped `recall--parent-condition' to inherit
-             ;; condition from rerun command.
-             (or recall--parent-condition
-                 (cl-find-if (lambda (condition)
-                               (and (bufferp buffer)
-                                    (buffer-match-p condition buffer)))
-                             recall-buffer-match))))
+             (cl-find-if (lambda (condition)
+                           (and (bufferp buffer)
+                                (buffer-match-p condition buffer)))
+                         recall-buffer-match))
+       ;; Format command string
+       (setq command
+             (when-let ((fn (or (cdr (assoc condition recall-command-format-alist))
+                                (cdr (assoc nil recall-command-format-alist)))))
+               (funcall fn (plist-get args :command))))
+       ;; Skip empty items
+       (not (string-empty-p command)))
       (let ((item
              (make-recall--item
               :command command
               :start-time (current-time)
               :directory (abbreviate-file-name directory)
-              :condition condition
+              ;; Using stack scoped `recall--parent-condition' to
+              ;; inherit condition from rerun command.
+              :condition (or recall--parent-condition condition)
               ;; FIXME Should be possible to support other vc backends
               ;; TODO Would be nice if we could store dirty, clean etc.
               :vc (vc-working-revision (file-name-as-directory directory) 'Git))))
