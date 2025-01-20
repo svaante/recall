@@ -131,7 +131,8 @@ See `time-stamp-format'."
   :type 'command)
 
 (defcustom recall-format-alist
-  '(("RC"        . (lambda (item)
+  '(("Command"   . recall--item-command)
+    ("RC"        . (lambda (item)
                      (when-let ((code (recall--item-exit-code item)))
                        (propertize
                         (format "%s" code) 'face
@@ -181,6 +182,11 @@ Alist of (NAME . FN) pairs.  FN takes `recall--item' should return string."
 Each NAME needs to exist in `recall-format-alist' to be
 displayed correctly."
   :type '(vector (repeat :inline t sexp)))
+
+(defcustom recall-annotation-format '("Command" "Directory" "Time" "RC" "Start")
+  "Subset of NAMEs to use for `completing-read' annotation.
+Each list item NAME needs to exist in `recall-list-format'."
+  :type '(repeat string))
 
 (defcustom recall-completing-read-fn #'recall-completing-read
   "Function used to complete `item candidates.
@@ -382,15 +388,17 @@ See `recall-completing-read'."
 
 
 ;;; List
+(defun recall--format-descriptor (name item)
+  (cond ((funcall (cdr (assoc name recall-format-alist)) item))
+        ("--")))
+
 (defvar-local recall-list-items nil)
 
 (defun recall--list-refresh ()
-  (cl-loop for (name . item) in (recall--collection recall-list-items)
+  (cl-loop for (_ . item) in (recall--collection recall-list-items)
            for desc =
-           (cl-loop for (col) across tabulated-list-format collect
-                    (cond ((equal col "Command") name)
-                          ((funcall (cdr (assoc col recall-format-alist)) item))
-                          (t "--"))
+           (cl-loop for (col) across tabulated-list-format
+                    collect (recall--format-descriptor col item)
                     into desc finally return (apply #'vector desc))
            collect (list item desc) into entries
            finally do
@@ -460,34 +468,29 @@ If ITEMS is non nil display all processes."
   (unless (file-exists-p buffer-file-name)
     (let ((inhibit-read-only t))
       (save-excursion
-        (insert (propertize "* Log file has been deleted *"
-                            'face 'warning)))))
-  (let ((before-string
-         (cl-loop with max-length =
-                  (apply #'max (mapcar (lambda (x) (length (car x)))
-                                       recall-format-alist))
-                  for (name . accessor) in
-                  (cons '("Command" . recall--item-command) recall-format-alist)
-                  for value = (funcall accessor recall--item)
-                  when value concat (format (format "%%%ds: %%s\n" max-length)
-                                            name value)
-                  into before-string
-                  finally return
-                  (concat (propertize before-string
-                                      'face 'recall-log-overlay-face)
-                          "\n")))
-        (overlay
-         (or (cl-find 'recall-log-overlay
-                      (overlays-in (point-min) (point-max))
-                      :key (lambda (ov) (overlay-get ov 'category)))
-             (make-overlay (point-min) (point-min)))))
+        (insert (propertize "* Log file has been deleted *" 'face 'warning)))))
+  (let* ((before-string
+          (cl-loop with max-length =
+                   (apply #'max (mapcar (lambda (x) (length (car x)))
+                                        recall-format-alist))
+                   for (name) in recall-format-alist
+                   for value = (recall--format-descriptor name recall--item)
+                   when value concat (format (format "%%%ds: %%s\n" max-length)
+                                             name value)
+                   into before-string
+                   finally return
+                   (concat (propertize before-string
+                                       'face 'recall-log-overlay-face)
+                           "\n")))
+         (overlay
+          (or (cl-find 'recall-log-overlay
+                       (overlays-in (point-min) (point-max))
+                       :key (lambda (ov) (overlay-get ov 'category)))
+              (make-overlay (point-min) (point-min)))))
     (overlay-put overlay 'category 'recall-log-overlay)
     (overlay-put overlay 'before-string before-string))
   (setq buffer-file-name nil
-        default-directory (recall--item-directory recall--item)
-        mode-line-buffer-identification
-        (append mode-line-buffer-identification
-                (list (format " {%s}" (recall--item-command recall--item)))))
+        default-directory (recall--item-directory recall--item))
   (let ((inhibit-read-only t))
     (run-hooks 'recall--log-filter-functions)))
 
@@ -520,20 +523,25 @@ If ITEMS is non nil display all processes."
                            item))))
 
 (defun recall--make-affixation (alist)
-  (lambda (candidates)
-    (cl-loop
-     for candidate in candidates
-     for (_ . item) = (assoc candidate alist 'string-equal) collect
-     `("" ""
-       ;; HACK Use `tabulated-list-mode' to create annotation
-       ,(with-temp-buffer
-          (tabulated-list-mode)
-          (setq tabulated-list-format recall-list-format)
-          (let ((item (copy-tree item)))
-            (setq-local recall-items (list item)))
-          (add-hook 'tabulated-list-revert-hook #'recall--list-refresh nil t)
-          (revert-buffer)
-          (string-trim-right (buffer-string)))))))
+  (let ((list-format
+         (cl-map 'vector
+                 (lambda (name)
+                   (cl-find name recall-list-format :key #'car :test #'equal))
+                 recall-annotation-format)))
+    (lambda (candidates)
+      (cl-loop
+       for candidate in candidates
+       for (_ . item) = (assoc candidate alist 'string-equal) collect
+       `("" ""
+         ;; HACK Use `tabulated-list-mode' to create annotation
+         ,(with-temp-buffer
+            (tabulated-list-mode)
+            (setq tabulated-list-format list-format)
+            (let ((item (copy-tree item)))
+              (setq-local recall-items (list item)))
+            (add-hook 'tabulated-list-revert-hook #'recall--list-refresh nil t)
+            (revert-buffer)
+            (string-trim-right (buffer-string))))))))
 
 (defun recall-completing-read (prompt &optional predicate)
   "Read a command string in the minibuffer, with completion.
