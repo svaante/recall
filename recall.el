@@ -412,7 +412,7 @@ See `recall-completing-read'."
 
 (defvar recall-list-mode nil)
 
-(define-derived-mode recall-list-mode tabulated-list-mode "Recall Command List"
+(define-derived-mode recall-list-mode tabulated-list-mode "Command List"
   "List of live and exited Emacs subprocesses."
   :interactive nil
   (setq-local buffer-stale-function (lambda (&optional _noconfirm) 'fast)
@@ -447,7 +447,7 @@ If ITEMS is non nil display all processes."
   "C-c w" #'recall-do-copy-as-kill-command
   "C-c d" #'recall-do-delete)
 
-(define-derived-mode recall-log-mode special-mode "Recall Command Log"
+(define-derived-mode recall-log-mode special-mode "Command Log"
   "Mode active in `recall' log files."
   :interactive nil
   ;; TODO Auto revert overlay info
