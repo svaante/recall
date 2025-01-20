@@ -166,8 +166,7 @@ See `time-stamp-format'."
                      (ignore-errors
                        (format "%s" (process-id (recall--item-process item)))))))
   "Log item format alist.
-Alist of (NAME . FN) pairs.  Where FN takes `recall--item' should
-return string."
+Alist of (NAME . FN) pairs.  FN takes `recall--item' should return string."
   :type 'alist)
 
 (defcustom recall-list-format [("Command" 70 t)
